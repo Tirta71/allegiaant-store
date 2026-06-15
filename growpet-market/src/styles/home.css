@@ -1,0 +1,358 @@
+.market-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 28px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(237, 247, 216, 0.88)),
+    var(--cream);
+  box-shadow: var(--shadow);
+}
+
+.market-intro h1,
+.market-intro p {
+  margin: 0;
+}
+
+.market-intro h1 {
+  max-width: 760px;
+  color: var(--leaf);
+  font-size: clamp(1.55rem, 3vw, 2.55rem);
+  line-height: 1.05;
+}
+
+.market-intro p:not(.market-kicker) {
+  max-width: 620px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 1.06rem;
+}
+
+.market-kicker {
+  width: fit-content;
+  margin-bottom: 12px !important;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(188, 231, 93, 0.28);
+  color: var(--leaf);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.market-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
+  gap: 10px;
+}
+
+.market-stats div {
+  display: grid;
+  gap: 2px;
+  min-width: 92px;
+  padding: 16px;
+  border: 1px solid rgba(49, 95, 61, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.market-stats strong {
+  color: var(--leaf);
+  font-size: 1.45rem;
+}
+
+.market-stats span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.home-section {
+  display: grid;
+  gap: 20px;
+}
+
+.buy-guide-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 24px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(237, 247, 216, 0.88)),
+    var(--cream);
+  box-shadow: var(--shadow);
+}
+
+.buy-guide-hero h1,
+.buy-guide-hero p,
+.buy-guide-panel h2,
+.buy-guide-panel p {
+  margin: 0;
+}
+
+.buy-guide-hero h1 {
+  max-width: 740px;
+  color: var(--leaf);
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  line-height: 1.02;
+}
+
+.buy-guide-hero p:not(.market-kicker) {
+  max-width: 640px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.buy-guide-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.buy-guide-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(280px, 0.72fr);
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow);
+}
+
+.buy-guide-panel > div:first-child {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.buy-guide-panel span {
+  color: var(--sage);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.buy-guide-panel h2 {
+  color: var(--leaf);
+  font-size: clamp(1.45rem, 3vw, 2.2rem);
+  line-height: 1.06;
+}
+
+.buy-guide-panel p {
+  color: var(--muted);
+}
+
+.buy-guide-notes {
+  display: grid;
+  gap: 8px;
+}
+
+.buy-guide-notes p {
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--leaf-soft);
+  color: var(--leaf);
+  font-weight: 800;
+}
+
+.catalog-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.testimonial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.step-card,
+.testimonial-card {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 30px rgba(49, 95, 61, 0.08);
+}
+
+.step-card span {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background: var(--leaf-soft);
+  color: var(--leaf);
+  font-weight: 900;
+}
+
+.step-card h3,
+.step-card p,
+.testimonial-card p,
+.testimonial-card strong {
+  margin: 0;
+}
+
+.step-card h3 {
+  margin-bottom: 8px;
+  color: var(--leaf);
+}
+
+.step-card p,
+.testimonial-card p {
+  color: var(--muted);
+}
+
+.testimonial-card {
+  display: grid;
+  align-content: space-between;
+  min-height: 150px;
+  gap: 20px;
+}
+
+.testimonial-card strong {
+  color: var(--leaf);
+}
+
+@media (max-width: 900px) {
+  .market-intro,
+  .buy-guide-hero,
+  .buy-guide-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .market-stats {
+    width: 100%;
+  }
+
+  .steps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .testimonial-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .market-intro,
+  .buy-guide-hero {
+    gap: 18px;
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .market-intro h1 {
+    font-size: 1.8rem;
+  }
+
+  .buy-guide-hero h1 {
+    font-size: 1.65rem;
+  }
+
+  .market-intro p:not(.market-kicker),
+  .buy-guide-hero p:not(.market-kicker) {
+    margin-top: 10px;
+    font-size: 0.96rem;
+  }
+
+  .buy-guide-hero__actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .buy-guide-hero__actions .btn {
+    width: 100%;
+  }
+
+  .buy-guide-panel {
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .market-stats {
+    display: none;
+  }
+
+  .catalog-heading {
+    display: grid;
+    align-items: start;
+  }
+
+  .catalog-heading .section-header {
+    gap: 6px;
+  }
+
+  .catalog-heading .section-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .catalog-heading .section-header p:not(.section-header__eyebrow) {
+    font-size: 0.92rem;
+  }
+
+  .steps-grid,
+  .testimonial-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .steps-grid--guide {
+    gap: 8px;
+  }
+
+  .steps-grid--guide .step-card {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+    column-gap: 10px;
+    row-gap: 2px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .steps-grid--guide .step-card span {
+    grid-row: 1 / span 2;
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    border-radius: 12px;
+    font-size: 0.78rem;
+  }
+
+  .steps-grid--guide .step-card h3 {
+    margin: 0 0 3px;
+    font-size: 0.96rem;
+    line-height: 1.15;
+  }
+
+  .steps-grid--guide .step-card p {
+    grid-column: 2;
+    font-size: 0.84rem;
+    line-height: 1.35;
+  }
+
+  .step-card,
+  .testimonial-card {
+    padding: 18px;
+  }
+}

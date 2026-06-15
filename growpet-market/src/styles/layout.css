@@ -1,0 +1,238 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid rgba(49, 95, 61, 0.1);
+  background: rgba(251, 248, 236, 0.86);
+  backdrop-filter: blur(18px);
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76px;
+  gap: 18px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand__mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(49, 95, 61, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(145deg, var(--lime), #f8ffca);
+  color: var(--leaf);
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(49, 95, 61, 0.14);
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.brand small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.nav-links a.active,
+.nav-links a:hover {
+  background: rgba(188, 231, 93, 0.24);
+  color: var(--leaf);
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.floating-cart {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(49, 95, 61, 0.16);
+  border-radius: 999px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(237, 247, 216, 0.9)),
+    #fff;
+  color: var(--leaf);
+  box-shadow: 0 18px 36px rgba(49, 95, 61, 0.18);
+  transition:
+    background 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.floating-cart:hover {
+  background: var(--leaf-soft);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 42px rgba(49, 95, 61, 0.2);
+}
+
+.floating-cart svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.floating-cart span {
+  position: absolute;
+  top: -5px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border: 2px solid var(--cream);
+  border-radius: 999px;
+  background: var(--leaf);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 950;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 24px;
+  padding-block: 34px;
+}
+
+.footer-grid p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.footer-brand,
+.footer-title {
+  color: var(--leaf) !important;
+  font-weight: 900;
+}
+
+.footer-brand {
+  margin-bottom: 8px !important;
+  font-size: 1.05rem;
+}
+
+.footer-title {
+  margin-bottom: 8px !important;
+}
+
+@media (max-width: 720px) {
+  .navbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    min-height: auto;
+    gap: 8px;
+    padding-block: 8px 10px;
+  }
+
+  .brand {
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .brand__mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+
+  .brand strong {
+    display: none;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .nav-links {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgba(49, 95, 61, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.54);
+    box-shadow: inset 0 -10px 18px rgba(49, 95, 61, 0.04);
+  }
+
+  .nav-links a {
+    justify-content: center;
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 5px;
+    background: transparent;
+    font-size: clamp(0.66rem, 2.65vw, 0.76rem);
+    line-height: 1.05;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .nav-links a.active {
+    background: var(--leaf);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(49, 95, 61, 0.18);
+  }
+
+  .nav-links a:hover:not(.active) {
+    background: rgba(188, 231, 93, 0.18);
+    color: var(--leaf);
+  }
+
+  .floating-cart {
+    right: 16px;
+    bottom: 16px;
+    width: 54px;
+    height: 54px;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    padding-block: 28px;
+  }
+}
