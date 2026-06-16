@@ -2,15 +2,26 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
-import SectionHeader from '../components/ui/SectionHeader'
 import { useAlert } from '../context/useAlert'
 import { formatPrice, formatWeight } from '../data/pets'
-import { findTransaction } from '../utils/transactions'
+import { fetchOrder } from '../services/api'
 
 const SELLER_WHATSAPP_DISPLAY = '0812-8496-4533'
 const SELLER_WHATSAPP_URL = 'https://wa.me/6281284964533'
+const PRIVATE_SERVER_NAME = 'ALLEGIAANT2'
+const PRIVATE_SERVER_URL =
+  'https://www.roblox.com/share?code=11816dc15902fb4bb2989f795b25f5e1&type=Server'
+const PRIVATE_SERVER_VISIBLE_STATUSES = new Set([
+  'payment_confirmed',
+  'processing',
+  'delivered',
+])
 
 function formatDate(value) {
+  if (!value) {
+    return '-'
+  }
+
   return new Intl.DateTimeFormat('id-ID', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -32,32 +43,46 @@ function CheckTransaction() {
   const [hasSearched, setHasSearched] = useState(false)
   const [copied, setCopied] = useState(false)
   const [checkedCode, setCheckedCode] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
   const sellerWhatsappUrl = getSellerWhatsappUrl(transaction?.code || checkedCode)
+  const canOpenPrivateServer = transaction
+    ? PRIVATE_SERVER_VISIBLE_STATUSES.has(transaction.rawStatus)
+    : false
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
     const nextCheckedCode = code.trim().toUpperCase()
-    const foundTransaction = findTransaction(nextCheckedCode)
 
-    setTransaction(foundTransaction)
-    setHasSearched(true)
-    setCopied(false)
-    setCheckedCode(nextCheckedCode)
+    setIsSearching(true)
 
-    if (foundTransaction) {
+    try {
+      const foundTransaction = await fetchOrder(nextCheckedCode)
+
+      setTransaction(foundTransaction)
+      setHasSearched(true)
+      setCopied(false)
+      setCheckedCode(nextCheckedCode)
       showAlert({
         tone: 'success',
         title: 'Transaksi ditemukan',
         message: `${foundTransaction.code} sedang diproses.`,
       })
-      return
+    } catch (requestError) {
+      setTransaction(null)
+      setHasSearched(true)
+      setCopied(false)
+      setCheckedCode(nextCheckedCode)
+      showAlert({
+        tone: 'warning',
+        title: 'Kode tidak ditemukan',
+        message:
+          requestError.status === 404
+            ? 'Cek lagi kode transaksi dari backend.'
+            : requestError.message,
+      })
+    } finally {
+      setIsSearching(false)
     }
-
-    showAlert({
-      tone: 'warning',
-      title: 'Kode tidak ditemukan',
-      message: 'Cek lagi kode transaksi dari halaman payment.',
-    })
   }
 
   async function handleCopyCode() {
@@ -93,11 +118,30 @@ function CheckTransaction() {
 
   return (
     <div className="container page-flow">
-      <SectionHeader
-        eyebrow="Cek transaksi"
-        title="Lacak order pakai kode transaksi"
-        description="Masukkan kode yang muncul setelah payment berhasil dikonfirmasi."
-      />
+      <section className="market-intro transaction-hero">
+        <div>
+          <p className="market-kicker">Cek transaksi</p>
+          <h1>Lacak order pakai kode transaksi</h1>
+          <p>
+            Masukkan kode order dari payment untuk melihat status terbaru dan
+            membuka shortcut chat seller.
+          </p>
+        </div>
+        <div className="market-stats" aria-label="Cek transaksi highlights">
+          <div>
+            <strong>Kode</strong>
+            <span>Order</span>
+          </div>
+          <div>
+            <strong>Status</strong>
+            <span>Update</span>
+          </div>
+          <div>
+            <strong>Chat</strong>
+            <span>Seller</span>
+          </div>
+        </div>
+      </section>
 
       <section className="transaction-layout">
         <form className="transaction-form" onSubmit={handleSubmit}>
@@ -111,7 +155,9 @@ function CheckTransaction() {
               required
             />
           </label>
-          <Button type="submit">Cek status</Button>
+          <Button type="submit" disabled={isSearching}>
+            {isSearching ? 'Mengecek...' : 'Cek status'}
+          </Button>
         </form>
 
         {hasSearched && (
@@ -146,19 +192,63 @@ function CheckTransaction() {
                   {copied ? 'Copied' : 'Copy'}
                 </Button>
               </div>
+              
               <div>
                 <span>Status</span>
                 <strong>{transaction.status}</strong>
               </div>
             </div>
 
-            <p>{transaction.statusNote}</p>
             <div className="transaction-meta">
               <span>Dibayar</span>
               <strong>{formatDate(transaction.paidAt)}</strong>
-              <span>Roblox</span>
+              <span>Username Roblox</span>
               <strong>{transaction.buyer.robloxUsername}</strong>
             </div>
+
+                <div className="private-server-card">
+                  <div>
+                    <span>Private server</span>
+                    {canOpenPrivateServer ? (
+                      <>
+                        <strong>{PRIVATE_SERVER_NAME}</strong>
+                        <p>Pembayaran sudah diverifikasi admin. Silakan masuk melalui link private server.</p>
+                      </>
+                    ) : (
+                    <p>Private server akan tersedia setelah pembayaran dikonfirmasi oleh admin.</p>
+                    )}
+                  </div>
+                  {canOpenPrivateServer && (
+                    <Button
+                      as="a"
+                      href={PRIVATE_SERVER_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Buka server
+                    </Button>
+                  )}
+                </div>
+              {transaction.statusNote && (
+                <div className="status-note" data-status={transaction.rawStatus}>
+                  <span>Catatan status</span>
+                  <p>{transaction.statusNote}</p>
+              </div>
+            )}
+
+          
+
+            {transaction.deliveryProof?.url && (
+              <div className="transaction-proof">
+                <span>Bukti trade</span>
+                <img
+                  src={transaction.deliveryProof.url}
+                  alt={`Bukti trade order ${transaction.code}`}
+                />
+              </div>
+            )}
 
             <div className="transaction-items">
               {transaction.items.map((item) => (

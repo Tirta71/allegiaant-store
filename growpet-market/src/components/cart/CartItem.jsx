@@ -2,13 +2,14 @@ import { Link } from 'react-router-dom'
 import { formatPrice, formatWeight } from '../../data/pets'
 import { useCart } from '../../context/useCart'
 import Badge from '../ui/Badge'
+import ProductArt from '../ui/ProductArt'
 
 function CartItem({ item }) {
   const { removeFromCart, updateQuantity, updateTokenPrice } = useCart()
   const isToken = item.type === 'token'
-  const detailLink = isToken ? '/' : `/pet/${item.id}`
-  const badgeTone = isToken ? 'mint' : item.rarity.toLowerCase()
-  const badgeLabel = isToken ? item.category : item.rarity
+  const detailLink = isToken ? '/' : `/pet/${item.slug || item.id}`
+  const badgeTone = isToken ? 'mint' : (item.rarity || 'pet').toLowerCase()
+  const badgeLabel = isToken ? item.category : item.rarity || 'Pet'
   const totalLabel = isToken ? 'Token didapat' : 'Total item'
   const totalValue = isToken ? item.packageLabel : formatPrice(item.price * item.quantity)
 
@@ -19,14 +20,7 @@ function CartItem({ item }) {
 
   return (
     <article className={`cart-item ${isToken ? 'cart-item--token' : 'cart-item--pet'}`}>
-      <div
-        className="cart-item__art pet-art"
-        role="img"
-        aria-label={`${item.name} pet illustration`}
-        style={{ '--pet-accent': item.accent, '--pet-soft': item.soft }}
-      >
-        <span>{item.name.slice(0, 1)}</span>
-      </div>
+      <ProductArt className="cart-item__art" product={item} />
 
       <div className="cart-item__info">
         <Badge tone={badgeTone}>{badgeLabel}</Badge>

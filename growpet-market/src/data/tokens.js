@@ -11,8 +11,8 @@ export const tokenProduct = {
   pricePerThousand: 15000,
 }
 
-export function calculateTokenAmount(price) {
-  return Math.floor((Number(price) / tokenProduct.pricePerThousand) * 1000)
+export function calculateTokenAmount(price, pricePerThousand = tokenProduct.pricePerThousand) {
+  return Math.floor((Number(price) / Number(pricePerThousand || 1)) * 1000)
 }
 
 export function formatTokenAmount(amount) {

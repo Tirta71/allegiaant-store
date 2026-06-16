@@ -1,6 +1,7 @@
 import { formatPrice, formatWeight } from '../../data/pets'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
+import ProductArt from '../ui/ProductArt'
 import SelectMenu from '../ui/SelectMenu'
 
 function PetDetailInfo({
@@ -14,17 +15,11 @@ function PetDetailInfo({
   onWeightChange,
   onAddToCart,
   onBuyNow,
+  canBuy = true,
 }) {
   return (
     <section className="detail-panel">
-      <div
-        className="detail-art pet-art"
-        role="img"
-        aria-label={`${pet.name} pet illustration`}
-        style={{ '--pet-accent': pet.accent, '--pet-soft': pet.soft }}
-      >
-        <span>{pet.name.slice(0, 1)}</span>
-      </div>
+      <ProductArt className="detail-art" product={pet} />
 
       <div className="detail-copy">
         <Badge tone={pet.rarity.toLowerCase()}>{pet.rarity}</Badge>
@@ -92,7 +87,7 @@ function PetDetailInfo({
               <button
                 type="button"
                 onClick={() => onQuantityChange(quantity - 1)}
-                disabled={quantity <= 1}
+                disabled={!canBuy || quantity <= 1}
               >
                 -
               </button>
@@ -102,11 +97,12 @@ function PetDetailInfo({
                 max={pet.stock}
                 value={quantity}
                 onChange={(event) => onQuantityChange(event.target.value)}
+                disabled={!canBuy}
               />
               <button
                 type="button"
                 onClick={() => onQuantityChange(quantity + 1)}
-                disabled={quantity >= pet.stock}
+                disabled={!canBuy || quantity >= pet.stock}
               >
                 +
               </button>
@@ -115,8 +111,10 @@ function PetDetailInfo({
         </div>
 
         <div className="detail-actions">
-          <Button onClick={onAddToCart}>Tambah ke cart</Button>
-          <Button variant="secondary" onClick={onBuyNow}>
+          <Button onClick={onAddToCart} disabled={!canBuy}>
+            Tambah ke cart
+          </Button>
+          <Button variant="secondary" onClick={onBuyNow} disabled={!canBuy}>
             Beli sekarang
           </Button>
         </div>

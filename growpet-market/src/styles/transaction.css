@@ -3,6 +3,10 @@
   gap: 18px;
 }
 
+.transaction-hero .market-stats strong {
+  font-size: 1rem;
+}
+
 .transaction-alert {
   display: grid;
   justify-items: start;
@@ -93,6 +97,7 @@
 .transaction-result__header,
 .transaction-meta,
 .transaction-items,
+.private-server-card,
 .transaction-total {
   display: grid;
   gap: 8px;
@@ -103,7 +108,8 @@
 }
 
 .transaction-result__header div,
-.transaction-meta {
+.transaction-meta,
+.private-server-card {
   display: grid;
   gap: 8px;
   padding: 14px;
@@ -111,12 +117,24 @@
   background: var(--leaf-soft);
 }
 
-.transaction-result span,
-.transaction-result p {
+.transaction-result :where(.transaction-result__header, .transaction-meta, .transaction-items, .transaction-proof, .transaction-total) span,
+.transaction-result > p {
   color: var(--muted);
 }
 
-.transaction-result p {
+.transaction-result__header span,
+.transaction-meta > span,
+.private-server-card span,
+.transaction-proof > span,
+.transaction-total > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.transaction-result > p {
   margin: 0;
 }
 
@@ -124,11 +142,54 @@
   color: var(--leaf);
 }
 
+.private-server-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.private-server-card div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.private-server-card p {
+  margin: 0;
+  color: var(--leaf);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
 .transaction-items div,
 .transaction-total {
   display: flex;
   justify-content: space-between;
   gap: 14px;
+}
+
+.transaction-proof {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(49, 95, 61, 0.12);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(237, 247, 216, 0.66), rgba(255, 255, 255, 0.82)),
+    #fff;
+}
+
+.transaction-proof img {
+  width: 100%;
+  max-height: 320px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.transaction-proof small {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .transaction-items span {
@@ -166,9 +227,14 @@
     border-radius: 18px;
   }
 
+  .private-server-card {
+    grid-template-columns: 1fr;
+  }
+
   .transaction-form .btn,
   .transaction-alert .btn,
-  .seller-contact .btn {
+  .seller-contact .btn,
+  .private-server-card .btn {
     width: 100%;
   }
 }

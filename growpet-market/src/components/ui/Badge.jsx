@@ -1,5 +1,7 @@
 function Badge({ children, tone = 'mint' }) {
-  return <span className={`badge badge--${tone}`}>{children}</span>
+  const normalizedTone = String(tone || 'mint').trim().toLowerCase()
+
+  return <span className={`badge badge--${normalizedTone}`}>{children}</span>
 }
 
 export default Badge

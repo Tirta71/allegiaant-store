@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { getPetVariantPrice } from '../data/pets'
 import { calculateTokenAmount, formatTokenAmount } from '../data/tokens'
 import { CartContext as CartStateContext } from './cart-context'
 
@@ -11,7 +10,7 @@ export function CartProvider({ children }) {
       const tokenAmount = Number(options.tokenAmount || 0)
       const tokenPrice = Number(options.tokenPrice || 0)
       const tokenLabel = options.tokenLabel || `${tokenAmount} Token`
-      const cartKey = product.id
+      const cartKey = `token-${options.productId || product.productId}-${options.tokenRateId || product.tokenRateId}`
       const stock = product.stock
 
       setItems((currentItems) => {
@@ -27,6 +26,10 @@ export function CartProvider({ children }) {
                   packageLabel: tokenLabel,
                   tokenAmount,
                   price: tokenPrice,
+                  productId: options.productId || product.productId,
+                  tokenRateId: options.tokenRateId || product.tokenRateId,
+                  pricePerThousand:
+                    options.pricePerThousand || product.pricePerThousand,
                   quantity: 1,
                 }
               : item,
@@ -41,6 +44,9 @@ export function CartProvider({ children }) {
             packageId: cartKey,
             packageLabel: tokenLabel,
             tokenAmount,
+            productId: options.productId || product.productId,
+            tokenRateId: options.tokenRateId || product.tokenRateId,
+            pricePerThousand: options.pricePerThousand || product.pricePerThousand,
             price: tokenPrice,
             stock,
             quantity: 1,
@@ -53,9 +59,10 @@ export function CartProvider({ children }) {
     const pet = product
     const mutation = options.mutation || pet.mutations?.[0] || 'Nightmare'
     const weightKg = Number(options.weightKg || pet.weights?.[0] || 1)
-    const price =
-      Number(options.price) || getPetVariantPrice(pet, mutation, weightKg)
-    const cartKey = `${pet.id}-${mutation}-${weightKg}`
+    const price = Number(options.price) || 0
+    const stock = Number(options.stock ?? pet.stock)
+    const productVariantId = options.productVariantId || options.variant?.id
+    const cartKey = `pet-${productVariantId || `${pet.id}-${mutation}-${weightKg}`}`
 
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.cartKey === cartKey)
@@ -63,11 +70,11 @@ export function CartProvider({ children }) {
       if (existingItem) {
         return currentItems.map((item) =>
           item.cartKey === cartKey
-            ? {
-                ...item,
-                quantity: Math.min(item.quantity + quantity, pet.stock),
-              }
-            : item,
+              ? {
+                  ...item,
+                  quantity: Math.min(item.quantity + quantity, stock),
+                }
+              : item,
         )
       }
 
@@ -76,10 +83,13 @@ export function CartProvider({ children }) {
         {
           ...pet,
           cartKey,
+          productId: pet.productId,
+          productVariantId,
           mutation,
           weightKg,
           price,
-          quantity: Math.min(quantity, pet.stock),
+          stock,
+          quantity: Math.min(quantity, stock),
         },
       ]
     })
@@ -100,18 +110,24 @@ export function CartProvider({ children }) {
 
   function updateTokenPrice(cartKey, tokenPrice) {
     const nextPrice = Math.max(0, Number(tokenPrice) || 0)
-    const tokenAmount = calculateTokenAmount(nextPrice)
 
     setItems((currentItems) =>
       currentItems.map((item) =>
         item.cartKey === cartKey && item.type === 'token'
-          ? {
-              ...item,
-              packageLabel: `${formatTokenAmount(tokenAmount)} Token`,
-              tokenAmount,
-              price: nextPrice,
-              quantity: 1,
-            }
+          ? (() => {
+              const tokenAmount = calculateTokenAmount(
+                nextPrice,
+                item.pricePerThousand,
+              )
+
+              return {
+                ...item,
+                packageLabel: `${formatTokenAmount(tokenAmount)} Token`,
+                tokenAmount,
+                price: nextPrice,
+                quantity: 1,
+              }
+            })()
           : item,
       ),
     )

@@ -79,10 +79,60 @@
   color: #a83266;
 }
 
-.section-header {
+.badge--prismatic {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.status-note {
   display: grid;
-  max-width: 650px;
   gap: 8px;
+  padding: 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--leaf-soft);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.status-note span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.status-note p {
+  margin: 0;
+  color: var(--leaf);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.section-header {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 760px;
+  gap: 10px;
+  overflow: hidden;
+  padding: 20px 22px;
+  border: 1px solid rgba(49, 95, 61, 0.13);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(237, 247, 216, 0.78)),
+    var(--cream);
+  box-shadow: 0 14px 34px rgba(49, 95, 61, 0.09);
+}
+
+.section-header::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lime), rgba(49, 95, 61, 0.28), transparent);
+  content: '';
 }
 
 .section-header--center {
@@ -92,24 +142,44 @@
 }
 
 .section-header__eyebrow {
+  width: fit-content;
   margin: 0;
-  color: var(--sage);
-  font-size: 0.78rem;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(188, 231, 93, 0.24);
+  color: var(--leaf);
+  font-size: 0.72rem;
   font-weight: 900;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .section-header h2 {
   margin: 0;
   color: var(--leaf);
-  font-size: clamp(1.65rem, 3vw, 2.45rem);
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
   line-height: 1.08;
 }
 
 .section-header p:not(.section-header__eyebrow) {
   margin: 0;
   color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .section-header {
+    gap: 8px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .section-header h2 {
+    font-size: 1.42rem;
+  }
+
+  .section-header p:not(.section-header__eyebrow) {
+    font-size: 0.92rem;
+  }
 }
 
 .select-menu {

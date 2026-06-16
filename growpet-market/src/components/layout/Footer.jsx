@@ -2,19 +2,17 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div className="container footer-grid">
-        <div>
+        <div className="footer-item footer-item--brand">
           <p className="footer-brand">Allegiaant Store</p>
-          <p>
-            Frontend marketplace demo untuk pet Grow a Garden dengan data lokal.
-          </p>
+          <p>Marketplace pet Grow a Garden </p>
         </div>
-        <div>
+        <div className="footer-item">
           <p className="footer-title">Flow</p>
           <p>Beli pet atau token, masukkan cart, lalu isi checkout.</p>
         </div>
-        <div>
+        <div className="footer-item">
           <p className="footer-title">Support</p>
-          <p>Order summary dan form checkout hanya simulasi frontend.</p>
+          <p>Order masuk dashboard admin dan bisa dicek pakai kode transaksi.</p>
         </div>
       </div>
     </footer>

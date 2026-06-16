@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import Testimonials from '../components/home/Testimonials'
 import FilterBar from '../components/pet/FilterBar'
 import PetGrid from '../components/pet/PetGrid'
 import TokenCard from '../components/token/TokenCard'
+import Alert from '../components/ui/Alert'
+import Button from '../components/ui/Button'
 
-import { pets } from '../data/pets'
-import { tokenProduct } from '../data/tokens'
+import { fetchProducts } from '../services/api'
 
 function sortPets(items, sortBy) {
   const sortedItems = [...items]
@@ -30,12 +30,56 @@ function Home() {
   const [search, setSearch] = useState('')
   const [selectedRarity, setSelectedRarity] = useState('All')
   const [sortBy, setSortBy] = useState('popular')
+  const [products, setProducts] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [requestKey, setRequestKey] = useState(0)
+
+  function reloadProducts() {
+    setIsLoading(true)
+    setError('')
+    setRequestKey((currentKey) => currentKey + 1)
+  }
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadProducts() {
+      try {
+        const nextProducts = await fetchProducts()
+
+        if (isMounted) {
+          setProducts(nextProducts)
+        }
+      } catch (requestError) {
+        if (isMounted) {
+          setError(requestError.message)
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadProducts()
+
+    return () => {
+      isMounted = false
+    }
+  }, [requestKey])
+
+  const petProducts = useMemo(
+    () => products.filter((product) => product.type === 'pet'),
+    [products],
+  )
+  const tokenProduct = products.find((product) => product.type === 'token')
 
   const filteredPets = useMemo(() => {
     const query = search.trim().toLowerCase()
 
     return sortPets(
-      pets.filter((pet) => {
+      petProducts.filter((pet) => {
         const matchesSearch =
           pet.name.toLowerCase().includes(query) ||
           pet.rarity.toLowerCase().includes(query)
@@ -46,7 +90,9 @@ function Home() {
       }),
       sortBy,
     )
-  }, [search, selectedRarity, sortBy])
+  }, [petProducts, search, selectedRarity, sortBy])
+
+  const rarityCount = new Set(petProducts.map((pet) => pet.rarity)).size
 
   return (
     <div className="container page-flow">
@@ -61,11 +107,11 @@ function Home() {
         </div>
         <div className="market-stats" aria-label="Market highlights">
           <div>
-            <strong>10</strong>
+            <strong>{petProducts.length}</strong>
             <span>Pet ready</span>
           </div>
           <div>
-            <strong>3</strong>
+            <strong>{rarityCount}</strong>
             <span>Rarity tier</span>
           </div>
           <div>
@@ -75,11 +121,7 @@ function Home() {
         </div>
       </section>
 
-    
-
       <section className="home-section catalog-section">
-        
-
         <FilterBar
           search={search}
           selectedRarity={selectedRarity}
@@ -88,11 +130,27 @@ function Home() {
           onRarityChange={setSelectedRarity}
           onSortChange={setSortBy}
         />
-        <TokenCard product={tokenProduct} />
-        <PetGrid pets={filteredPets} />
+        {isLoading && (
+          <section className="empty-state">
+            <h3>Memuat katalog</h3>
+            <p>Mengambil data product dari backend.</p>
+          </section>
+        )}
+        {!isLoading && error && (
+          <section className="empty-state">
+            <Alert tone="error" title="Katalog gagal dimuat">
+              {error}
+            </Alert>
+            <Button onClick={reloadProducts} variant="secondary">
+              Coba lagi
+            </Button>
+          </section>
+        )}
+        {!isLoading && !error && tokenProduct?.tokenRateId && (
+          <TokenCard product={tokenProduct} />
+        )}
+        {!isLoading && !error && <PetGrid pets={filteredPets} />}
       </section>
-
-      <Testimonials />
     </div>
   )
 }

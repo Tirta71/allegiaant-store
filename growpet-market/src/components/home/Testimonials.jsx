@@ -1,33 +1,49 @@
-import SectionHeader from '../ui/SectionHeader'
 
 const testimonials = [
   {
     name: 'Nara',
-    text: 'UI-nya gampang discan, pet mahal langsung keliatan rarity dan stoknya.',
+    order: 'Pet order',
+    text: 'Card pet gampang discan, rarity dan stoknya langsung kelihatan tanpa harus buka banyak halaman.',
   },
   {
     name: 'Adit',
-    text: 'Checkout ringkas, cocok buat showcase marketplace tanpa sistem login.',
+    order: 'Token order',
+    text: 'Checkout ringkas, nominal dan ringkasan pesanan jelas. Tinggal lanjut payment manual tanpa bingung.',
   },
   {
     name: 'Mika',
-    text: 'Warnanya soft dan card pet-nya lucu, tetap bersih di layar mobile.',
+    order: 'Mobile buyer',
+    text: 'Tampilan mobile-nya clean dan padat. Pilih pet, cek detail, lalu bayar terasa lebih cepat.',
+  },
+  {
+    name: 'Raka',
+    order: 'Repeat buyer',
+    text: 'Kode transaksi dan status order jelas, jadi enak buat follow up pesanan yang masih pending.',
+  },
+  {
+    name: 'Luna',
+    order: 'Pet detail',
+    text: 'Detail pet lebih rapi, pilihan mutasi dan beratnya mudah dibandingkan sebelum checkout.',
+  },
+  {
+    name: 'Farel',
+    order: 'QRIS payment',
+    text: 'Payment manual pakai QRIS statis lebih praktis, total pesanan sudah otomatis muncul.',
   },
 ]
 
 function Testimonials() {
   return (
     <section className="home-section">
-      <SectionHeader
-        eyebrow="Testimoni"
-        title="Market terasa ringan dan friendly"
-        description="Copy dan layout dibuat singkat supaya fokus tetap di katalog pet."
-      />
+    
       <div className="testimonial-grid">
         {testimonials.map((testimonial) => (
           <article className="testimonial-card" key={testimonial.name}>
             <p>"{testimonial.text}"</p>
-            <strong>{testimonial.name}</strong>
+            <div>
+              <strong>{testimonial.name}</strong>
+              <span>{testimonial.order}</span>
+            </div>
           </article>
         ))}
       </div>

@@ -184,6 +184,10 @@
   gap: 16px;
 }
 
+.testimonial-hero .market-stats strong {
+  font-size: 1.02rem;
+}
+
 .step-card,
 .testimonial-card {
   padding: 22px;
@@ -225,12 +229,24 @@
 .testimonial-card {
   display: grid;
   align-content: space-between;
-  min-height: 150px;
-  gap: 20px;
+  min-height: 178px;
+  gap: 22px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(237, 247, 216, 0.72)),
+    var(--cream);
 }
 
 .testimonial-card strong {
+  display: block;
   color: var(--leaf);
+}
+
+.testimonial-card span {
+  display: block;
+  margin-top: 2px;
+  color: var(--sage);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 @media (max-width: 900px) {

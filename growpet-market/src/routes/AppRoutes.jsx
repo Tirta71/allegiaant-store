@@ -6,12 +6,14 @@ import Checkout from '../pages/Checkout'
 import Home from '../pages/Home'
 import Payment from '../pages/Payment'
 import PetDetail from '../pages/PetDetail'
+import TestimonialsPage from '../pages/TestimonialsPage'
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/cara-beli" element={<BuyGuide />} />
+      <Route path="/testimoni" element={<TestimonialsPage />} />
       <Route path="/catalog" element={<Navigate to="/" replace />} />
       <Route path="/pet/:id" element={<PetDetail />} />
       <Route path="/token" element={<Navigate to="/" replace />} />

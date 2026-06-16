@@ -59,12 +59,17 @@
   color: #8a5b00;
   padding: 0 10px;
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 950;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
 .token-card__info p {
-  color: var(--muted);
+  color: var(--leaf);
+  font-size: 1.02rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.1;
 }
 
 .token-card__meta {
@@ -100,33 +105,41 @@
 }
 
 .token-card__total span,
-.token-card__input span {
+.token-card__input label {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 900;
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .token-card__total strong {
   color: var(--leaf);
   font-size: 1.05rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.1;
 }
 
 .token-card__actions {
   display: grid;
   grid-template-columns: repeat(2, 140px);
-  align-items: end;
+  grid-template-rows: auto auto auto;
+  align-items: start;
   justify-content: flex-end;
-  gap: 10px;
+  column-gap: 10px;
+  row-gap: 6px;
 }
 
 .token-card__input {
-  display: grid;
-  gap: 6px;
+  display: contents;
 }
 
 .token-card__input input {
   width: 140px;
   min-height: 40px;
+  grid-column: 1;
+  grid-row: 2;
   border: 1px solid var(--line);
   border-radius: 999px;
   background:
@@ -146,12 +159,26 @@
     inset 0 -8px 16px rgba(49, 95, 61, 0.04);
 }
 
+.token-card__input small {
+  color: #b42318;
+  font-size: 0.72rem;
+  font-weight: 800;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  line-height: 1.2;
+  min-height: 0.9rem;
+}
+
 .token-card__buy {
   width: 140px;
   min-height: 40px;
+  align-self: start;
+  grid-column: 2;
+  grid-row: 2;
   border: 1px solid rgba(49, 95, 61, 0.16);
   background: rgba(255, 255, 255, 0.72);
   color: var(--leaf);
+  margin-top: 0;
   padding-inline: 14px;
   box-shadow: inset 0 -8px 16px rgba(49, 95, 61, 0.04);
 }
@@ -244,7 +271,8 @@
   .token-card__actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    column-gap: 8px;
+    row-gap: 6px;
   }
 
   .token-card__input input {
@@ -271,6 +299,15 @@
 
   .token-card__actions {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .token-card__input label,
+  .token-card__input input,
+  .token-card__input small,
+  .token-card__buy {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .token-card__buy {

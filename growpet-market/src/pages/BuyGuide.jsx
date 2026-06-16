@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import Button from '../components/ui/Button'
-import SectionHeader from '../components/ui/SectionHeader'
+
 import { buyingSteps, sellerNotes } from '../data/howToBuy'
 
 function BuyGuide() {
@@ -26,11 +26,7 @@ function BuyGuide() {
       </section>
 
       <section className="home-section">
-        <SectionHeader
-          eyebrow="Step order"
-          title="Runtutan beli yang benar"
-          description="Pastikan kode transaksi disimpan setelah payment berhasil dikonfirmasi."
-        />
+        
         <div className="steps-grid steps-grid--guide">
           {buyingSteps.map((step, index) => (
             <article className="step-card" key={step.title}>

@@ -181,7 +181,7 @@ export const pets = [
   },
 ]
 
-export const rarityOptions = ['All', 'Legendary', 'Mythical', 'Divine']
+export const rarityOptions = ['All', 'Legendary', 'Mythical', 'Divine', 'Prismatic']
 
 export function formatPrice(price) {
   return new Intl.NumberFormat('id-ID', {
