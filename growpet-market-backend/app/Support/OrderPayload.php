@@ -5,18 +5,21 @@ namespace App\Support;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
-use App\Services\QrisPayloadService;
-use Illuminate\Support\Facades\Storage;
+use App\Services\PakasirService;
 
 class OrderPayload
 {
-    public function __construct(private readonly QrisPayloadService $qrisPayload)
+    public function __construct(private readonly PakasirService $pakasir)
     {
     }
 
     public function make(Order $order): array
     {
         $order->loadMissing(['items', 'payments']);
+        $pakasirPayment = $order->payments
+            ->where('method', Payment::METHOD_PAKASIR)
+            ->sortByDesc('created_at')
+            ->first();
 
         return [
             'id' => $order->id,
@@ -47,11 +50,16 @@ class OrderPayload
                 && $this->paymentSecondsRemaining($order) > 0,
             'created_at' => $order->created_at?->toISOString(),
             'payment_instructions' => [
-                'method' => 'qris',
-                'amount' => $order->total,
+                'method' => Payment::METHOD_PAKASIR,
+                'amount' => $pakasirPayment?->provider_total ?: $order->total,
+                'order_amount' => $order->total,
+                'fee' => $pakasirPayment?->provider_fee,
+                'total_payment' => $pakasirPayment?->provider_total ?: $order->total,
                 'merchant_name' => config('payment.qris.merchant_name'),
-                'qris_payload' => $this->qrisPayload->dynamicPayload((int) $order->total),
-                'static_image_url' => $this->staticQrisImageUrl(),
+                'qris_payload' => $pakasirPayment?->provider_payload,
+                'expired_at' => $pakasirPayment?->provider_expires_at?->toISOString(),
+                'payment_url' => $this->pakasir->paymentUrl($order),
+                'qris_only' => (bool) config('payment.pakasir.qris_only', true),
             ],
             'items' => $order->items->map(fn (OrderItem $item) => [
                 'id' => $item->id,
@@ -74,25 +82,16 @@ class OrderPayload
                 'method' => $payment->method,
                 'amount' => $payment->amount,
                 'status' => $payment->status,
+                'provider_reference' => $payment->provider_reference,
+                'provider_payload' => $payment->provider_payload,
+                'provider_fee' => $payment->provider_fee,
+                'provider_total' => $payment->provider_total,
+                'provider_expires_at' => $payment->provider_expires_at?->toISOString(),
                 'proof_url' => $payment->proof_url,
+                'proof_uploaded_at' => $payment->proof_uploaded_at?->toISOString(),
                 'confirmed_at' => $payment->confirmed_at?->toISOString(),
             ])->values(),
         ];
-    }
-
-    private function staticQrisImageUrl(): ?string
-    {
-        $configuredUrl = config('payment.qris.static_image_url');
-
-        if ($configuredUrl) {
-            return $configuredUrl;
-        }
-
-        if (Storage::disk('public')->exists('qris/qris-static.png')) {
-            return Storage::disk('public')->url('qris/qris-static.png');
-        }
-
-        return null;
     }
 
     private function paymentSecondsRemaining(Order $order): int

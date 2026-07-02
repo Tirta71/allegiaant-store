@@ -2,6 +2,7 @@
 
 use App\Models\Order;
 use App\Services\OrderReservationService;
+use App\Services\PakasirService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -12,14 +13,21 @@ Artisan::command('inspire', function () {
 
 Artisan::command('orders:expire-pending', function () {
     $reservation = app(OrderReservationService::class);
+    $pakasir = app(PakasirService::class);
     $expiredCount = 0;
 
     Order::query()
         ->where('status', Order::STATUS_PENDING_PAYMENT)
         ->whereNotNull('payment_expires_at')
         ->where('payment_expires_at', '<=', now())
-        ->chunkById(100, function ($orders) use ($reservation, &$expiredCount) {
+        ->chunkById(100, function ($orders) use ($reservation, $pakasir, &$expiredCount) {
             foreach ($orders as $order) {
+                $order = $pakasir->syncOrderPayment($order);
+
+                if ($order->status !== Order::STATUS_PENDING_PAYMENT) {
+                    continue;
+                }
+
                 $reservation->cancel($order, 'Waktu payment 10 menit habis. Pesanan otomatis dibatalkan dan stok dikembalikan.');
                 $expiredCount++;
             }

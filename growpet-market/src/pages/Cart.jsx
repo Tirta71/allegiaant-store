@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import CartItem from '../components/cart/CartItem'
 import OrderSummary from '../components/cart/OrderSummary'
 import Button from '../components/ui/Button'
-import SectionHeader from '../components/ui/SectionHeader'
+import PageHeader from '../components/ui/PageHeader'
 import { useCart } from '../context/useCart'
 
 function Cart() {
@@ -10,16 +10,16 @@ function Cart() {
 
   return (
     <div className="container page-flow cart-page">
-      <div className="cart-heading">
-        <SectionHeader
-          eyebrow="Cart"
-          title="Keranjang pet"
-          description="Atur quantity sebelum lanjut ke checkout."
-        />
-        <Button as={Link} to="/" variant="ghost" className="back-link">
-          Kembali
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Cart"
+        title="Keranjang pet"
+        description="Atur quantity sebelum lanjut ke checkout."
+        action={
+          <Button as={Link} to="/" variant="ghost" className="back-link">
+            Kembali
+          </Button>
+        }
+      />
 
       {items.length === 0 ? (
         <section className="empty-state">

@@ -2,13 +2,6 @@
   gap: 28px;
 }
 
-.cart-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-}
-
 .cart-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -327,29 +320,6 @@
 @media (max-width: 640px) {
   .cart-page {
     gap: 18px;
-  }
-
-  .cart-heading {
-    display: grid;
-    gap: 12px;
-  }
-
-  .cart-heading .section-header {
-    gap: 6px;
-  }
-
-  .cart-heading .section-header h2 {
-    font-size: 1.55rem;
-  }
-
-  .cart-heading .section-header p:not(.section-header__eyebrow) {
-    font-size: 0.92rem;
-  }
-
-  .cart-heading .back-link {
-    width: fit-content;
-    min-height: 38px;
-    padding-inline: 14px;
   }
 
   .cart-layout,

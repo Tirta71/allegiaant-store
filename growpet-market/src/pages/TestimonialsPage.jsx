@@ -1,4 +1,4 @@
-import Testimonials from '../components/home/Testimonials'
+import Testimonials from "../components/home/Testimonials";
 
 function TestimonialsPage() {
   return (
@@ -8,29 +8,29 @@ function TestimonialsPage() {
           <p className="market-kicker">Customer voices</p>
           <h1>Testimoni pembeli Allegiaant Store</h1>
           <p>
-            Beberapa feedback singkat dari pembeli yang memakai katalog pet dan
-            checkout manual di store ini.
+            Bukti trade dari order yang sudah selesai, lengkap dengan username
+            Roblox dan item yang dibeli.
           </p>
         </div>
         <div className="market-stats" aria-label="Testimonial highlights">
           <div>
-            <strong>Fast</strong>
-            <span>Checkout</span>
+            <strong>Trade</strong>
+            <span>Proof</span>
           </div>
           <div>
-            <strong>Clean</strong>
-            <span>Catalog</span>
+            <strong>Real</strong>
+            <span>Buyer</span>
           </div>
           <div>
-            <strong>Manual</strong>
-            <span>Payment</span>
+            <strong>Order</strong>
+            <span>Done</span>
           </div>
         </div>
       </section>
 
       <Testimonials />
     </div>
-  )
+  );
 }
 
-export default TestimonialsPage
+export default TestimonialsPage;

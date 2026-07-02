@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    public const METHOD_PAKASIR = 'pakasir';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_CONFIRMED = 'confirmed';
@@ -21,7 +23,12 @@ class Payment extends Model
         'amount',
         'status',
         'provider_reference',
+        'provider_payload',
+        'provider_fee',
+        'provider_total',
+        'provider_expires_at',
         'proof_url',
+        'proof_uploaded_at',
         'confirmed_at',
     ];
 
@@ -29,6 +36,10 @@ class Payment extends Model
     {
         return [
             'amount' => 'integer',
+            'provider_fee' => 'integer',
+            'provider_total' => 'integer',
+            'provider_expires_at' => 'datetime',
+            'proof_uploaded_at' => 'datetime',
             'confirmed_at' => 'datetime',
         ];
     }

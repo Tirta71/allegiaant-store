@@ -139,12 +139,19 @@
                             <th>Method</th>
                             <th>Amount</th>
                             <th>Status</th>
-                            <th>Bukti</th>
+                            <th>Provider / Bukti</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($order->payments as $payment)
+                            @php
+                                $isPakasirPayment = $payment->method === 'pakasir';
+                                $paymentConfirmed = $payment->status === 'confirmed' || filled($order->paid_at);
+                                $canConfirmPayment = ! $isPakasirPayment
+                                    && ! $paymentConfirmed
+                                    && $order->status === 'pending_payment';
+                            @endphp
                             <tr>
                                 <td>{{ $payment->method }}</td>
                                 <td>Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
@@ -155,20 +162,34 @@
                                     @if ($payment->proof_url)
                                         <a class="button small secondary" href="{{ $payment->proof_url }}" target="_blank"
                                             rel="noreferrer">Lihat bukti</a>
+                                    @elseif ($isPakasirPayment)
+                                        <span class="muted">{{ $payment->provider_reference ?? $order->code }}</span>
                                     @else
                                         <span class="muted">Belum upload</span>
                                     @endif
                                 </td>
                                 <td>
-                                    @if ($payment->status !== 'confirmed')
-                                        <form method="POST" action="{{ route('admin.payments.confirm', $payment) }}"
-                                            class="actions">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button class="button small" type="submit">Confirm payment</button>
-                                        </form>
+                                    @if ($canConfirmPayment)
+                                        <div class="actions">
+                                            <form method="POST" action="{{ route('admin.payments.confirm', $payment) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button class="button small" type="submit">Confirm payment</button>
+                                            </form>
+                                            @if ($payment->proof_url)
+                                                <form method="POST" action="{{ route('admin.payments.reset-proof', $payment) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button class="button small secondary" type="submit">Reset bukti</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    @elseif ($paymentConfirmed)
+                                        <span class="muted">{{ $payment->confirmed_at?->format('d M Y H:i') ?? 'Sudah paid' }}</span>
+                                    @elseif ($isPakasirPayment)
+                                        <span class="muted">Menunggu gateway</span>
                                     @else
-                                        <span class="muted">{{ $payment->confirmed_at?->format('d M Y H:i') }}</span>
+                                        <span class="muted">Menunggu bukti</span>
                                     @endif
                                 </td>
                             </tr>

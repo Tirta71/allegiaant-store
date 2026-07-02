@@ -61,7 +61,8 @@ http://localhost:8000/api
 | GET | `/api/orders/{code}` | Cek transaksi |
 | POST | `/api/orders/{code}/cancel` | Batalkan order pending dan kembalikan stok |
 | GET | `/api/orders/{code}/status-history` | Riwayat status |
-| POST | `/api/orders/{code}/payment-proof` | Upload bukti payment manual |
+| POST | `/api/pakasir/webhook` | Webhook payment completed dari Pakasir |
+| POST | `/api/orders/{code}/payment-proof` | Upload bukti payment manual legacy |
 
 ### Create Order Payload
 
@@ -88,7 +89,41 @@ http://localhost:8000/api
 }
 ```
 
-### Upload Bukti Payment
+### Pakasir Payment
+
+Order baru akan memakai payment gateway Pakasir. Response `POST /api/orders` dan
+`GET /api/orders/{code}` mengembalikan `payment_instructions.qris_payload` yang
+dirender frontend menjadi QRIS.
+
+```json
+{
+  "data": {
+    "code": "GPM-20260615-ABCDE",
+    "status": "pending_payment",
+    "payment_instructions": {
+      "method": "pakasir",
+      "order_amount": 100000,
+      "fee": 1003,
+      "total_payment": 101003,
+      "amount": 101003,
+      "qris_payload": "000201010212...",
+      "expired_at": "2026-07-01T15:15:00.000000Z",
+      "qris_only": true
+    }
+  }
+}
+```
+
+Set Webhook URL pada project Pakasir ke:
+
+```text
+https://domain-backend-kamu.com/api/pakasir/webhook
+```
+
+Webhook yang diterima akan diverifikasi ulang ke Transaction Detail API Pakasir
+sebelum order lokal berubah menjadi `payment_confirmed`.
+
+### Upload Bukti Payment Legacy
 
 ```http
 POST /api/orders/GPM-20260615-ABCDE/payment-proof
@@ -128,4 +163,4 @@ Content-Type: application/json
 }
 ```
 
-Order hanya bisa dibatalkan saat masih `pending_payment` dan belum upload bukti payment. Stok yang dikunci saat checkout akan dikembalikan, lalu data order dihapus.
+Order hanya bisa dibatalkan saat masih `pending_payment`. Stok yang dikunci saat checkout akan dikembalikan, lalu data order dihapus.

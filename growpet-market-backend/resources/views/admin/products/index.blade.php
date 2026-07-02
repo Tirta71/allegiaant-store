@@ -29,87 +29,83 @@
         </div>
     </form>
 
-    <section class="panel table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Produk</th>
-                    <th>Type</th>
-                    <th>Total stok</th>
-                    <th>Terjual</th>
-                    <th>Flags</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($products as $product)
-                    <tr>
-                        <td>
-                            <div class="product-cell">
-                                @if ($product->image_url)
-                                    <img class="product-thumb" src="{{ $product->image_url }}" alt="{{ $product->name }}">
-                                @else
-                                    <span
-                                        class="product-thumb product-thumb--empty">{{ strtoupper(substr($product->name, 0, 1)) }}</span>
-                                @endif
-                                <div>
-                                    <strong>{{ $product->name }}</strong><br>
-                                    <span class="muted">{{ $product->slug }}
-                                        {{ $product->rarity ? '- ' . $product->rarity : '' }}</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="badge">{{ $product->type }}</span></td>
-                        <td>
-                            @if ($product->type === 'pet')
-                                {{ number_format($product->total_variant_stock ?? 0, 0, ',', '.') }}
-                            @else
-                                <span class="muted">-</span>
-                            @endif
-                        </td>
-                        <td>{{ number_format($product->sales_count, 0, ',', '.') }}</td>
-                        <td>
-                            @if ($product->featured)
-                                <span class="badge">Featured</span>
-                            @endif
-                            @if ($product->best_seller)
-                                <span class="badge">Best seller</span>
-                            @endif
-                        </td>
-                        <td><span
-                                class="badge {{ $product->active ? '' : 'muted' }}">{{ $product->active ? 'Active' : 'Inactive' }}</span>
-                        </td>
-                        <td>
-                            <div class="actions">
-                                <a class="button small secondary" href="{{ route('admin.products.edit', $product) }}">Edit
-                                    produk</a>
+    <section class="product-grid" aria-label="Daftar produk">
+        @forelse ($products as $product)
+            <article class="product-card {{ $product->active ? '' : 'is-muted' }}">
+                <div class="product-card__media">
+                    @if ($product->image_url)
+                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}">
+                    @else
+                        <span>{{ strtoupper(substr($product->name, 0, 1)) }}</span>
+                    @endif
+                </div>
+
+                <div class="product-card__content">
+                    <div class="product-card__head">
+                        <div>
+                            <h2>{{ $product->name }}</h2>
+                            <p>{{ $product->slug }}</p>
+                        </div>
+                        <span
+                            class="status-pill {{ $product->active ? 'success' : 'muted' }}">{{ $product->active ? 'Active' : 'Inactive' }}</span>
+                    </div>
+
+                    <div class="product-card__badges">
+                        <span class="badge">{{ ucfirst($product->type) }}</span>
+                        @if ($product->rarity)
+                            <span class="badge muted">{{ $product->rarity }}</span>
+                        @endif
+                        @if ($product->featured)
+                            <span class="badge warning">Featured</span>
+                        @endif
+                        @if ($product->best_seller)
+                            <span class="badge success">Best seller</span>
+                        @endif
+                    </div>
+
+                    <div class="product-card__stats">
+                        <div>
+                            <span>Total stok</span>
+                            <strong>
                                 @if ($product->type === 'pet')
-                                    <a class="button small soft"
-                                        href="{{ route('admin.product-variants.index', ['product_id' => $product->id]) }}">Harga</a>
+                                    {{ number_format($product->total_variant_stock ?? 0, 0, ',', '.') }}
                                 @else
-                                    <a class="button small soft" href="{{ route('admin.token-rates.index') }}">Rate</a>
+                                    -
                                 @endif
-                                <form method="POST" action="{{ route('admin.products.destroy', $product) }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="button small danger" type="submit">Hapus</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7">
-                            <div class="empty-state">
-                                <h3>Belum ada produk</h3>
-                                <p>Tambahkan pet atau token pertama kamu, lalu lanjut atur harga detailnya.</p>
-                            </div>
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Terjual</span>
+                            <strong>{{ number_format($product->sales_count, 0, ',', '.') }}</strong>
+                        </div>
+                        <div>
+                            <span>Urutan</span>
+                            <strong>{{ number_format($product->sort_order, 0, ',', '.') }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="product-card__actions">
+                        <a class="button small secondary" href="{{ route('admin.products.edit', $product) }}">Edit produk</a>
+                        @if ($product->type === 'pet')
+                            <a class="button small soft"
+                                href="{{ route('admin.product-variants.index', ['product_id' => $product->id]) }}">Harga</a>
+                        @else
+                            <a class="button small soft" href="{{ route('admin.token-rates.index') }}">Rate</a>
+                        @endif
+                        <form method="POST" action="{{ route('admin.products.destroy', $product) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button class="button small danger" type="submit">Hapus</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+        @empty
+            <div class="panel empty-state product-empty">
+                <h3>Belum ada produk</h3>
+                <p>Tambahkan pet atau token pertama kamu, lalu lanjut atur harga detailnya.</p>
+            </div>
+        @endforelse
     </section>
 
     <div class="pagination">{{ $products->links() }}</div>

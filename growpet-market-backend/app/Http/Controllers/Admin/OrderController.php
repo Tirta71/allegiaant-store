@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Services\OrderPaymentConfirmationService;
 use App\Services\OrderReservationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -17,35 +20,51 @@ use Illuminate\View\View;
 
 class OrderController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
-        $statusFilters = $this->statusFilters();
+        $isRealtime = $request->boolean('realtime');
+        $data = $this->indexData($request, includeFilters: !$isRealtime);
+
+        if ($isRealtime) {
+            return response()->json([
+                'html' => view('admin.orders.partials.history', $data)->render(),
+                'latest_order_id' => $data['orders']->first()?->id,
+                'total' => $data['orders']->total(),
+                'refreshed_at' => now()->toIso8601String(),
+            ]);
+        }
+
+        return view('admin.orders.index', $data);
+    }
+
+    private function indexData(Request $request, bool $includeFilters = true): array
+    {
         $orders = Order::query()
             ->with(['items', 'payments'])
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when($request->filled('status'), fn($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('type'), function ($query) use ($request) {
                 $type = $request->string('type')->toString();
 
                 if ($type === 'pet') {
                     $query
-                        ->whereHas('items', fn ($query) => $query->where('item_type', OrderItem::TYPE_PET))
-                        ->whereDoesntHave('items', fn ($query) => $query->where('item_type', OrderItem::TYPE_TOKEN));
+                        ->whereHas('items', fn($query) => $query->where('item_type', OrderItem::TYPE_PET))
+                        ->whereDoesntHave('items', fn($query) => $query->where('item_type', OrderItem::TYPE_TOKEN));
                 }
 
                 if ($type === 'token') {
                     $query
-                        ->whereHas('items', fn ($query) => $query->where('item_type', OrderItem::TYPE_TOKEN))
-                        ->whereDoesntHave('items', fn ($query) => $query->where('item_type', OrderItem::TYPE_PET));
+                        ->whereHas('items', fn($query) => $query->where('item_type', OrderItem::TYPE_TOKEN))
+                        ->whereDoesntHave('items', fn($query) => $query->where('item_type', OrderItem::TYPE_PET));
                 }
 
                 if ($type === 'mixed') {
                     $query
-                        ->whereHas('items', fn ($query) => $query->where('item_type', OrderItem::TYPE_PET))
-                        ->whereHas('items', fn ($query) => $query->where('item_type', OrderItem::TYPE_TOKEN));
+                        ->whereHas('items', fn($query) => $query->where('item_type', OrderItem::TYPE_PET))
+                        ->whereHas('items', fn($query) => $query->where('item_type', OrderItem::TYPE_TOKEN));
                 }
             })
             ->when($request->filled('search'), function ($query) use ($request) {
-                $search = '%'.$request->string('search')->trim().'%';
+                $search = '%' . $request->string('search')->trim() . '%';
 
                 $query->where(function ($query) use ($search) {
                     $query->where('code', 'like', $search)
@@ -54,19 +73,24 @@ class OrderController extends Controller
                 });
             })
             ->latest()
-            ->paginate(10)
+            ->paginate(5)
             ->withQueryString();
 
-        return view('admin.orders.index', [
+        $data = [
             'orders' => $orders,
             'statuses' => $this->statuses(),
-            'statusFilters' => $statusFilters,
-            'types' => [
+        ];
+
+        if ($includeFilters) {
+            $data['statusFilters'] = $this->statusFilters();
+            $data['types'] = [
                 'pet' => 'Pet',
                 'token' => 'Token',
                 'mixed' => 'Campuran',
-            ],
-        ]);
+            ];
+        }
+
+        return $data;
     }
 
     public function show(Order $order): View
@@ -79,13 +103,115 @@ class OrderController extends Controller
         ]);
     }
 
+    public function streamOverlay(): View
+    {
+        return $this->streamOverlayView(route('admin.orders.stream-overlay.feed'));
+    }
+
+    public function streamOverlayFeed(Request $request): JsonResponse
+    {
+        return $this->streamOverlayFeedResponse($request);
+    }
+
+    public function publicStreamOverlay(Request $request): View
+    {
+        $token = $this->requireStreamOverlayToken($request);
+
+        return $this->streamOverlayView(route('stream.order-overlay.feed', ['token' => $token]));
+    }
+
+    public function publicStreamOverlayFeed(Request $request): JsonResponse
+    {
+        $this->requireStreamOverlayToken($request);
+
+        return $this->streamOverlayFeedResponse($request);
+    }
+
+    private function streamOverlayView(string $feedUrl): View
+    {
+        $latestConfirmedPayment = Payment::query()
+            ->where('status', Payment::STATUS_CONFIRMED)
+            ->whereNotNull('confirmed_at')
+            ->whereHas('order', fn ($query) => $query->where('status', '!=', Order::STATUS_CANCELLED))
+            ->latest('confirmed_at')
+            ->latest('id')
+            ->first(['id', 'confirmed_at']);
+
+        return view('admin.orders.stream-overlay', [
+            'feedUrl' => $feedUrl,
+            'latestOverlayPaymentId' => $latestConfirmedPayment?->id ?? 0,
+            'latestOverlayPaymentTime' => $latestConfirmedPayment?->confirmed_at?->toIso8601String(),
+        ]);
+    }
+
+    private function streamOverlayFeedResponse(Request $request): JsonResponse
+    {
+        $afterTime = filled($request->query('after_time'))
+            ? Carbon::parse($request->query('after_time'))
+            : null;
+        $afterId = max(0, (int) $request->query('after_id', 0));
+        $payment = Payment::query()
+            ->with('order.items')
+            ->where('status', Payment::STATUS_CONFIRMED)
+            ->whereNotNull('confirmed_at')
+            ->whereHas('order', fn ($query) => $query->where('status', '!=', Order::STATUS_CANCELLED))
+            ->when($afterTime, function ($query) use ($afterTime, $afterId) {
+                $query->where(function ($query) use ($afterTime, $afterId) {
+                    $query->where('confirmed_at', '>', $afterTime)
+                        ->orWhere(function ($query) use ($afterTime, $afterId) {
+                            $query->where('confirmed_at', $afterTime)
+                                ->where('id', '>', $afterId);
+                        });
+                });
+            })
+            ->latest('confirmed_at')
+            ->latest('id')
+            ->first();
+        $payments = $payment ? collect([$payment]) : collect();
+
+        return response()->json([
+            'orders' => $payments->map(function (Payment $payment) {
+                $order = $payment->order;
+
+                return [
+                    'payment_id' => $payment->id,
+                    'confirmed_at' => $payment->confirmed_at?->format('d M Y H:i'),
+                    'id' => $order->id,
+                    'code' => $order->code,
+                    'buyer' => $order->buyer_roblox_username,
+                    'total' => $order->total,
+                    'total_formatted' => 'Rp ' . number_format($order->total, 0, ',', '.'),
+                    'item_summary' => $this->overlayItemSummary($order),
+                    'remaining_items' => max(0, $order->items->count() - 1),
+                    'created_at' => $order->created_at?->format('d M Y H:i'),
+                ];
+            })->values(),
+            'cursor' => [
+                'payment_id' => $payment?->id ?? $afterId,
+                'event_time' => $payment?->confirmed_at?->toIso8601String() ?? $afterTime?->toIso8601String(),
+                'proof_time' => $payment?->confirmed_at?->toIso8601String() ?? $afterTime?->toIso8601String(),
+            ],
+            'refreshed_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    private function requireStreamOverlayToken(Request $request): string
+    {
+        $configuredToken = (string) config('stream.order_overlay_token');
+        $providedToken = (string) $request->query('token', '');
+
+        abort_if($configuredToken === '', 404);
+        abort_unless($providedToken !== '' && hash_equals($configuredToken, $providedToken), 403);
+
+        return $providedToken;
+    }
+
     public function updateStatus(
         Request $request,
         Order $order,
         OrderPaymentConfirmationService $confirmation,
         OrderReservationService $reservation
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $data = $request->validate([
             'status' => ['required', Rule::in(array_keys($this->statuses()))],
             'status_note' => ['nullable', 'string'],
@@ -145,7 +271,7 @@ class OrderController extends Controller
             $path = $data['delivery_proof']->store("delivery-proofs/{$order->code}", 'public');
             $proofUrl = Storage::disk('public')->url($path);
             $deliveryProofNote = $data['delivery_proof_note'] ?? null;
-            $note = $deliveryProofNote ?: 'Bukti trade item diupload admin.';
+            $note = $deliveryProofNote ?: 'Bukti trade item telah diupload dan pesanan telah selesai.';
 
             $order->update([
                 'status' => Order::STATUS_DELIVERED,
@@ -184,5 +310,37 @@ class OrderController extends Controller
             ->all();
 
         return array_intersect_key($this->statuses(), array_flip($usedStatuses));
+    }
+
+    private function overlayItemSummary(Order $order): string
+    {
+        $item = $order->items->first();
+
+        if (!$item) {
+            return 'Order baru';
+        }
+
+        if ($item->item_type === OrderItem::TYPE_TOKEN) {
+            return $item->package_label_snapshot
+                ?? number_format((int) $item->token_amount_snapshot, 0, ',', '.') . ' token';
+        }
+
+        $weight = filled($item->weight_kg_snapshot)
+            ? (float) $item->weight_kg_snapshot
+            : null;
+        $weightLabel = $weight === null
+            ? null
+            : (fmod($weight, 1.0) === 0.0
+                ? number_format($weight, 0, ',', '.')
+                : number_format($weight, 2, ',', '.')) . 'kg';
+        $mutationLabel = filled($item->mutation_name_snapshot)
+            ? 'mutasi ' . $item->mutation_name_snapshot
+            : null;
+
+        return implode(' ', array_filter([
+            $item->product_name_snapshot,
+            $mutationLabel,
+            $weightLabel,
+        ]));
     }
 }

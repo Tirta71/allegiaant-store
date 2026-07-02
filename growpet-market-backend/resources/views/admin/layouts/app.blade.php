@@ -415,6 +415,10 @@
             flex: 1 1 100%;
         }
 
+        html.has-js form.is-auto-filter button[type="submit"] {
+            display: none;
+        }
+
         label {
             display: grid;
             gap: 7px;
@@ -646,6 +650,156 @@
             font-weight: 400;
         }
 
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .product-card {
+            display: grid;
+            grid-template-rows: 180px minmax(0, 1fr);
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: var(--shadow-soft);
+            transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            border-color: #c2d5b2;
+            box-shadow: var(--shadow);
+        }
+
+        .product-card.is-muted {
+            background: #fbfcf8;
+        }
+
+        .product-card__media {
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            border-bottom: 1px solid var(--line-soft);
+            background:
+                radial-gradient(circle at 24% 18%, rgba(155, 211, 72, .24), transparent 32%),
+                linear-gradient(135deg, #fbfcf8, #eef4e7);
+        }
+
+        .product-card__media img {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: calc(100% - 24px);
+            max-height: calc(100% - 24px);
+            object-fit: contain;
+            object-position: center;
+        }
+
+        .product-card__media span {
+            display: grid;
+            place-items: center;
+            width: 64px;
+            height: 64px;
+            border: 1px solid #d8e7c8;
+            border-radius: 8px;
+            background: var(--accent-soft);
+            color: #35530f;
+            font-size: 24px;
+            font-weight: 500;
+        }
+
+        .product-card__content {
+            display: grid;
+            align-content: start;
+            gap: 13px;
+            padding: 14px;
+        }
+
+        .product-card__head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: start;
+        }
+
+        .product-card__head h2 {
+            overflow: hidden;
+            font-size: 18px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .product-card__head p {
+            overflow: hidden;
+            margin: 5px 0 0;
+            color: #667064;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 12px;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .product-card__badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 27px;
+            align-items: center;
+        }
+
+        .product-card__stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .product-card__stats div {
+            min-width: 0;
+            border: 1px solid var(--line-soft);
+            border-radius: 8px;
+            padding: 9px;
+            background: var(--surface-soft);
+        }
+
+        .product-card__stats span {
+            display: block;
+            overflow: hidden;
+            color: #667064;
+            font-size: 11px;
+            line-height: 1.2;
+            text-overflow: ellipsis;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .product-card__stats strong {
+            display: block;
+            margin-top: 5px;
+            color: #142019;
+            font-size: 17px;
+            font-weight: 500;
+            line-height: 1.1;
+        }
+
+        .product-card__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            padding-top: 2px;
+        }
+
+        .product-card__actions form {
+            margin: 0;
+        }
+
+        .product-empty {
+            grid-column: 1 / -1;
+        }
+
         .record-list {
             display: grid;
             gap: 12px;
@@ -763,16 +917,69 @@
             margin: 0;
         }
 
-        .flash,
+        .admin-alert,
         .errors {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: start;
+            gap: 12px;
             margin-bottom: 16px;
+            border: 1px solid var(--line);
             border-radius: 8px;
-            padding: 12px 14px;
+            padding: 13px 14px;
+            background: var(--surface);
+            box-shadow: var(--shadow-soft);
         }
 
-        .flash {
+        .admin-alert {
             border: 1px solid var(--accent);
             background: #f4fadf;
+        }
+
+        .admin-alert--success {
+            border-color: rgba(61, 111, 29, .26);
+            background: linear-gradient(135deg, #f4fadf, #fbfef5);
+            color: #24520d;
+        }
+
+        .admin-alert--warning {
+            border-color: rgba(151, 93, 35, .28);
+            background: linear-gradient(135deg, #fff8de, #fffdf5);
+            color: #734510;
+        }
+
+        .admin-alert--error {
+            border-color: #f5b5ad;
+            background: linear-gradient(135deg, #fff0ee, #fff8f7);
+            color: #8a1f14;
+        }
+
+        .admin-alert__body {
+            display: grid;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .admin-alert__title {
+            color: currentColor;
+            font-weight: 600;
+        }
+
+        .admin-alert__message {
+            color: currentColor;
+            line-height: 1.45;
+        }
+
+        .admin-alert__close {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            border: 0;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .64);
+            color: currentColor;
+            cursor: pointer;
         }
 
         .errors {
@@ -1018,6 +1225,10 @@
 
         .order-history-actions form {
             margin: 0;
+        }
+
+        .order-overlay-actions {
+            margin: -4px 0 16px;
         }
 
         .order-table--history th:nth-child(3),
@@ -1897,6 +2108,30 @@
                 width: 100%;
             }
 
+            .product-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .product-card {
+                grid-template-rows: 150px minmax(0, 1fr);
+            }
+
+            .product-card__content {
+                gap: 11px;
+                padding: 12px;
+            }
+
+            .product-card__actions {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .product-card__actions form,
+            .product-card__actions .button {
+                width: 100%;
+            }
+
             th,
             td {
                 padding: 10px;
@@ -1980,18 +2215,41 @@
             @endauth
 
             <main class="page">
-                @if (session('status'))
-                    <div class="flash">{{ session('status') }}</div>
+                @php
+                    $alertMessage = session('status') ?? session('success') ?? session('warning') ?? session('error');
+                    $alertTone = session('error') ? 'error' : (session('warning') ? 'warning' : 'success');
+                    $alertTitle = match ($alertTone) {
+                        'error' => 'Gagal',
+                        'warning' => 'Perhatian',
+                        default => 'Berhasil',
+                    };
+                @endphp
+
+                @if ($alertMessage)
+                    <div class="admin-alert admin-alert--{{ $alertTone }}" role="alert" data-admin-alert>
+                        <div class="admin-alert__body">
+                            <strong class="admin-alert__title">{{ $alertTitle }}</strong>
+                            <span class="admin-alert__message">{{ $alertMessage }}</span>
+                        </div>
+                        <button class="admin-alert__close" type="button" aria-label="Tutup alert" data-admin-alert-close>
+                            &times;
+                        </button>
+                    </div>
                 @endif
 
                 @if ($errors->any())
-                    <div class="errors">
-                        <strong>Validasi gagal.</strong>
-                        <ul>
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
+                    <div class="errors admin-alert admin-alert--error" role="alert" data-admin-alert>
+                        <div class="admin-alert__body">
+                            <strong class="admin-alert__title">Validasi gagal.</strong>
+                            <ul>
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        <button class="admin-alert__close" type="button" aria-label="Tutup alert" data-admin-alert-close>
+                            &times;
+                        </button>
                     </div>
                 @endif
 
@@ -1999,6 +2257,74 @@
             </main>
         </div>
     </div>
+    <script>
+        (() => {
+            document.documentElement.classList.add('has-js')
+
+            const autoFilterForms = document.querySelectorAll('form[method="GET"], form[method="get"]')
+            const adminAlerts = document.querySelectorAll('[data-admin-alert]')
+
+            adminAlerts.forEach((alert) => {
+                const close = alert.querySelector('[data-admin-alert-close]')
+
+                close?.addEventListener('click', () => {
+                    alert.remove()
+                })
+
+                window.setTimeout(() => {
+                    alert.remove()
+                }, 5200)
+            })
+
+            autoFilterForms.forEach((form) => {
+                const fields = form.querySelectorAll(
+                    'input[type="search"], input[data-auto-submit], select[data-auto-submit], select[name]'
+                )
+
+                if (!fields.length) {
+                    return
+                }
+
+                let timeoutId
+                let isComposing = false
+                form.classList.add('is-auto-filter')
+
+                const submit = (delay = 0) => {
+                    window.clearTimeout(timeoutId)
+                    timeoutId = window.setTimeout(() => {
+                        if (isComposing) {
+                            return
+                        }
+
+                        if (typeof form.requestSubmit === 'function') {
+                            form.requestSubmit()
+                            return
+                        }
+
+                        form.submit()
+                    }, delay)
+                }
+
+                fields.forEach((field) => {
+                    if (field.tagName === 'SELECT') {
+                        field.addEventListener('change', () => submit())
+                        return
+                    }
+
+                    field.addEventListener('compositionstart', () => {
+                        isComposing = true
+                    })
+
+                    field.addEventListener('compositionend', () => {
+                        isComposing = false
+                        submit(360)
+                    })
+
+                    field.addEventListener('input', () => submit(420))
+                })
+            })
+        })()
+    </script>
 </body>
 
 </html>

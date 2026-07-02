@@ -1,18 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import OrderSummary from '../components/cart/OrderSummary'
 import Button from '../components/ui/Button'
-import SectionHeader from '../components/ui/SectionHeader'
+import PageHeader from '../components/ui/PageHeader'
 import { useAlert } from '../context/useAlert'
 import { useCart } from '../context/useCart'
 import { formatPrice } from '../data/pets'
-import { cancelOrder, fetchOrder, uploadPaymentProof } from '../services/api'
+import { cancelOrder, fetchOrder } from '../features/orders/orders.api'
 import {
   clearPendingOrder,
+  getCheckTransactionPath,
   getPendingOrder,
+  isOrderCheckoutBlocked,
+  isOrderFinished,
   savePendingOrder,
 } from '../utils/transactions'
+
+const PAYMENT_STATUS_POLL_INTERVAL_MS = 5000
 
 function formatPaymentTime(seconds) {
   const safeSeconds = Math.max(0, seconds)
@@ -25,186 +30,38 @@ function formatPaymentTime(seconds) {
 function Payment() {
   const { clearCart } = useCart()
   const { showAlert } = useAlert()
+  const navigate = useNavigate()
   const [pendingOrder, setPendingOrder] = useState(() => getPendingOrder())
   const [transaction, setTransaction] = useState(null)
-  const [copied, setCopied] = useState(false)
-  const [proofFile, setProofFile] = useState(null)
-  const [qrImageUrl, setQrImageUrl] = useState('')
-  const [qrError, setQrError] = useState('')
-  const [isRefreshingOrder, setIsRefreshingOrder] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
+  const [isRefreshingOrder, setIsRefreshingOrder] = useState(() =>
+    Boolean(getPendingOrder()?.code),
+  )
   const [isCancelling, setIsCancelling] = useState(false)
   const [secondsRemaining, setSecondsRemaining] = useState(0)
   const [hasSyncedTimer, setHasSyncedTimer] = useState(false)
   const [autoCancelStarted, setAutoCancelStarted] = useState(false)
+  const [qrState, setQrState] = useState({ payload: '', imageUrl: '', error: '' })
+  const clearedCartOrder = useRef('')
 
   const order = transaction || pendingOrder
   const qrisPayload = order?.paymentInstructions?.qrisPayload || ''
-  const staticQrisImage = order?.paymentInstructions?.staticImageUrl || ''
-  const hasUploadedProof = Boolean(order?.payments?.some((payment) => payment.proofUrl))
-  const isWaitingAdmin = order?.rawStatus === 'pending_payment' && hasUploadedProof
+  const qrImageUrl = qrState.payload === qrisPayload ? qrState.imageUrl : ''
+  const qrError = qrState.payload === qrisPayload ? qrState.error : ''
+  const totalPayment =
+    order?.paymentInstructions?.totalPayment ||
+    order?.paymentInstructions?.amount ||
+    order?.summary?.total ||
+    0
+  const providerFee = order?.paymentInstructions?.fee || 0
+  const paymentMethodLabel = order?.paymentInstructions?.qrisOnly
+    ? 'QRIS'
+    : 'Payment Gateway'
+  const shouldRedirectToCheckTransaction =
+    isOrderCheckoutBlocked(order) && order?.rawStatus !== 'pending_payment'
   const isCancelled = transaction?.rawStatus === 'cancelled'
-  const canPay = pendingOrder?.rawStatus === 'pending_payment' && secondsRemaining > 0
+  const checkTransactionPath = order?.code ? getCheckTransactionPath(order) : ''
 
-  useEffect(() => {
-    if (!pendingOrder?.code || transaction) {
-      return undefined
-    }
-
-    let isActive = true
-    setIsRefreshingOrder(true)
-
-    fetchOrder(pendingOrder.code)
-      .then((freshOrder) => {
-        if (isActive) {
-          setPendingOrder(freshOrder)
-          savePendingOrder(freshOrder)
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (isActive) {
-          setIsRefreshingOrder(false)
-        }
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [pendingOrder?.code, transaction])
-
-  useEffect(() => {
-    if (!pendingOrder?.paymentExpiresAt || transaction) {
-      setSecondsRemaining(0)
-      setHasSyncedTimer(false)
-      return undefined
-    }
-
-    function syncRemainingTime() {
-      const expiresAt = new Date(pendingOrder.paymentExpiresAt).getTime()
-      const remaining = Math.ceil((expiresAt - Date.now()) / 1000)
-      setSecondsRemaining(Math.max(0, remaining))
-      setHasSyncedTimer(true)
-    }
-
-    syncRemainingTime()
-    const timer = window.setInterval(syncRemainingTime, 1000)
-
-    return () => window.clearInterval(timer)
-  }, [pendingOrder?.paymentExpiresAt, transaction])
-
-  useEffect(() => {
-    if (
-      !pendingOrder?.code ||
-      transaction ||
-      !hasSyncedTimer ||
-      secondsRemaining > 0 ||
-      autoCancelStarted ||
-      isRefreshingOrder
-    ) {
-      return
-    }
-
-    handleCancelOrder(
-      'Waktu payment 10 menit habis. Pesanan otomatis dibatalkan dan stok dikembalikan.',
-      true,
-    )
-  }, [
-    autoCancelStarted,
-    hasSyncedTimer,
-    isRefreshingOrder,
-    pendingOrder,
-    secondsRemaining,
-    transaction,
-  ])
-
-  useEffect(() => {
-    let isActive = true
-
-    setQrImageUrl('')
-    setQrError('')
-
-    if (!qrisPayload) {
-      return () => {
-        isActive = false
-      }
-    }
-
-    QRCode.toDataURL(qrisPayload, {
-      errorCorrectionLevel: 'M',
-      margin: 2,
-      width: 320,
-      color: {
-        dark: '#111827',
-        light: '#ffffff',
-      },
-    })
-      .then((url) => {
-        if (isActive) {
-          setQrImageUrl(url)
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setQrError('QRIS dinamis belum bisa dibuat.')
-        }
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [qrisPayload])
-
-  async function handleUploadProof(event) {
-    event.preventDefault()
-
-    if (!pendingOrder) {
-      return
-    }
-
-    if (!canPay) {
-      showAlert({
-        tone: 'warning',
-        title: 'Waktu payment habis',
-        message: 'Pesanan ini sudah tidak bisa dibayar. Buat checkout baru.',
-      })
-      return
-    }
-
-    if (!proofFile) {
-      showAlert({
-        tone: 'warning',
-        title: 'Bukti payment belum dipilih',
-        message: 'Upload screenshot atau file bukti payment terlebih dahulu.',
-      })
-      return
-    }
-
-    setIsUploading(true)
-
-    try {
-      const updatedOrder = await uploadPaymentProof(pendingOrder.code, proofFile)
-      clearCart()
-      savePendingOrder(updatedOrder)
-      setTransaction(updatedOrder)
-      setPendingOrder(updatedOrder)
-      showAlert({
-        tone: 'success',
-        title: 'Bukti payment terkirim',
-        message: `Kode ${updatedOrder.code} menunggu pengecekan admin.`,
-      })
-    } catch (requestError) {
-      showAlert({
-        tone: 'error',
-        title: 'Upload gagal',
-        message: requestError.message,
-      })
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  async function handleCancelOrder(reason, automatic = false) {
+  const handleCancelOrder = useCallback(async (reason, automatic = false) => {
     if (!pendingOrder?.code) {
       return
     }
@@ -237,38 +94,223 @@ function Payment() {
     } finally {
       setIsCancelling(false)
     }
-  }
+  }, [pendingOrder, showAlert])
 
-  async function handleCopyCode() {
-    if (!order?.code) {
+  useEffect(() => {
+    if (pendingOrder?.code && clearedCartOrder.current !== pendingOrder.code) {
+      clearedCartOrder.current = pendingOrder.code
+      clearCart()
+    }
+  }, [clearCart, pendingOrder?.code])
+
+  useEffect(() => {
+    if (!pendingOrder?.code || transaction) {
+      return undefined
+    }
+
+    let isActive = true
+    const loadingTimer = window.setTimeout(() => {
+      if (isActive) {
+        setIsRefreshingOrder(true)
+      }
+    }, 0)
+
+    fetchOrder(pendingOrder.code)
+      .then((freshOrder) => {
+        if (isActive) {
+          if (isOrderFinished(freshOrder)) {
+            clearPendingOrder()
+            setPendingOrder(null)
+            return
+          }
+
+          if (freshOrder.rawStatus !== 'pending_payment') {
+            savePendingOrder(freshOrder)
+            setPendingOrder(freshOrder)
+            return
+          }
+
+          setPendingOrder(freshOrder)
+          savePendingOrder(freshOrder)
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (isActive) {
+          window.clearTimeout(loadingTimer)
+          setIsRefreshingOrder(false)
+        }
+      })
+
+    return () => {
+      isActive = false
+      window.clearTimeout(loadingTimer)
+    }
+  }, [pendingOrder?.code, transaction])
+
+  useEffect(() => {
+    if (
+      !pendingOrder?.code ||
+      pendingOrder.rawStatus !== 'pending_payment' ||
+      transaction
+    ) {
+      return undefined
+    }
+
+    let isActive = true
+    let isPolling = false
+
+    async function pollPaymentStatus() {
+      if (isPolling || document.hidden) {
+        return
+      }
+
+      isPolling = true
+
+      try {
+        const freshOrder = await fetchOrder(pendingOrder.code)
+
+        if (!isActive) {
+          return
+        }
+
+        if (isOrderFinished(freshOrder)) {
+          clearPendingOrder()
+          setPendingOrder(null)
+          return
+        }
+
+        savePendingOrder(freshOrder)
+        setPendingOrder(freshOrder)
+
+        if (freshOrder.rawStatus !== 'pending_payment') {
+          showAlert({
+            tone: 'success',
+            title: 'Payment berhasil',
+            message: 'Status payment sudah otomatis terkonfirmasi.',
+          })
+        }
+      } catch {
+        // Keep the QRIS page usable when a transient polling request fails.
+      } finally {
+        isPolling = false
+      }
+    }
+
+    const timer = window.setInterval(
+      pollPaymentStatus,
+      PAYMENT_STATUS_POLL_INTERVAL_MS,
+    )
+
+    return () => {
+      isActive = false
+      window.clearInterval(timer)
+    }
+  }, [
+    pendingOrder?.code,
+    pendingOrder?.rawStatus,
+    showAlert,
+    transaction,
+  ])
+
+  useEffect(() => {
+    if (!pendingOrder?.paymentExpiresAt || transaction) {
+      const resetTimer = window.setTimeout(() => {
+        setSecondsRemaining(0)
+        setHasSyncedTimer(false)
+      }, 0)
+
+      return () => window.clearTimeout(resetTimer)
+    }
+
+    function syncRemainingTime() {
+      const expiresAt = new Date(pendingOrder.paymentExpiresAt).getTime()
+      const remaining = Math.ceil((expiresAt - Date.now()) / 1000)
+      setSecondsRemaining(Math.max(0, remaining))
+      setHasSyncedTimer(true)
+    }
+
+    syncRemainingTime()
+    const timer = window.setInterval(syncRemainingTime, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [pendingOrder?.paymentExpiresAt, transaction])
+
+  useEffect(() => {
+    if (
+      !pendingOrder?.code ||
+      transaction ||
+      !hasSyncedTimer ||
+      secondsRemaining > 0 ||
+      autoCancelStarted ||
+      isRefreshingOrder
+    ) {
       return
     }
 
-    if (!navigator.clipboard) {
-      showAlert({
-        tone: 'warning',
-        title: 'Clipboard tidak tersedia',
-        message: 'Salin kode transaksi secara manual.',
-      })
+    const cancelTimer = window.setTimeout(() => {
+      handleCancelOrder(
+        'Waktu payment 10 menit habis. Pesanan otomatis dibatalkan dan stok dikembalikan.',
+        true,
+      )
+    }, 0)
+
+    return () => window.clearTimeout(cancelTimer)
+  }, [
+    autoCancelStarted,
+    hasSyncedTimer,
+    isRefreshingOrder,
+    handleCancelOrder,
+    pendingOrder,
+    secondsRemaining,
+    transaction,
+  ])
+
+  useEffect(() => {
+    if (!checkTransactionPath || !shouldRedirectToCheckTransaction) {
       return
     }
 
-    try {
-      await navigator.clipboard.writeText(order.code)
-      setCopied(true)
-      showAlert({
-        tone: 'success',
-        title: 'Kode dicopy',
-        message: `${order.code} siap ditempel.`,
-      })
-    } catch {
-      showAlert({
-        tone: 'error',
-        title: 'Copy gagal',
-        message: 'Salin kode transaksi secara manual.',
-      })
+    navigate(checkTransactionPath, { replace: true })
+  }, [navigate, checkTransactionPath, shouldRedirectToCheckTransaction])
+
+  useEffect(() => {
+    let isActive = true
+
+    if (!qrisPayload) {
+      return () => {
+        isActive = false
+      }
     }
-  }
+
+    QRCode.toDataURL(qrisPayload, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 320,
+      color: {
+        dark: '#111827',
+        light: '#ffffff',
+      },
+    })
+      .then((url) => {
+        if (isActive) {
+          setQrState({ payload: qrisPayload, imageUrl: url, error: '' })
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setQrState({
+            payload: qrisPayload,
+            imageUrl: '',
+            error: 'QRIS belum bisa dibuat.',
+          })
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [qrisPayload])
 
   if (!pendingOrder && !transaction) {
     return (
@@ -284,23 +326,19 @@ function Payment() {
     )
   }
 
+  if (shouldRedirectToCheckTransaction) {
+    return null
+  }
+
   return (
     <div className="container page-flow">
-      <SectionHeader
+      <PageHeader
         eyebrow="Payment"
-        title={
-          isCancelled
-            ? 'Pesanan dibatalkan'
-            : transaction || isWaitingAdmin
-            ? 'Bukti payment terkirim'
-            : 'Selesaikan payment QRIS'
-        }
+        title={isCancelled ? 'Pesanan dibatalkan' : 'Selesaikan payment QRIS'}
         description={
           isCancelled
             ? 'Stok sudah dikembalikan dan kamu bisa checkout lagi.'
-            : transaction || isWaitingAdmin
-            ? 'Admin akan mengecek bukti payment dan memproses order setelah valid.'
-            : 'Scan QRIS sesuai total order, lalu upload bukti payment untuk dicek admin.'
+            : 'Scan QRIS sesuai total payment yang tampil di halaman ini.'
         }
       />
 
@@ -308,7 +346,6 @@ function Payment() {
         <div className="payment-card">
           {isCancelled ? (
             <>
-             
               <p className="payment-note">
                 Stok sudah dikembalikan. Kamu bisa membuat pesanan baru dari market.
               </p>
@@ -318,91 +355,78 @@ function Payment() {
                 </Button>
               </div>
             </>
-          ) : transaction || isWaitingAdmin ? (
-            <>
-              <p className="payment-label">Kode transaksi</p>
-              <div className="transaction-code-row">
-                <div className="transaction-code">{order.code}</div>
-                <Button variant="secondary" onClick={handleCopyCode}>
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
-              </div>
-              <div className="status-note" data-status={order.rawStatus}>
-                <span>Catatan status</span>
-                <p>
-                  {order.statusNote ||
-                    'Simpan kode ini untuk cek status transaksi di halaman cek transaksi.'}
-                </p>
-              </div>
-              <div className="payment-actions">
-                {!isCancelled && (
-                  <Button as={Link} to="/cek-transaksi">
-                    Cek transaksi
-                  </Button>
-                )}
-                <Button as={Link} to="/" variant="ghost">
-                  Kembali ke market
-                </Button>
-              </div>
-            </>
           ) : (
             <>
               <div className="payment-method">
-                <span>{order.paymentInstructions?.merchantName || 'QRIS / E-wallet'}</span>
-                <strong>{formatPrice(order.summary.total)}</strong>
+                <span>{paymentMethodLabel}</span>
+                <strong>{formatPrice(totalPayment)}</strong>
               </div>
               <div className={`payment-timer ${secondsRemaining <= 60 ? 'is-warning' : ''}`}>
                 <span>Batas payment</span>
                 <strong>{formatPaymentTime(secondsRemaining)}</strong>
               </div>
+              {order.statusNote && (
+                <div className="payment-status-note">
+                  <span>Status</span>
+                  <p>{order.statusNote}</p>
+                </div>
+              )}
+              <div className="pakasir-panel">
+                <span>Kode transaksi</span>
+                <strong>{order.code}</strong>
+                <p>
+                  {isRefreshingOrder
+                    ? 'Memuat data payment terbaru...'
+                    : qrisPayload
+                    ? 'Status payment akan otomatis terkonfirmasi setelah pembayaran berhasil.'
+                    : 'QRIS belum tersedia. Coba refresh halaman atau hubungi seller.'}
+                </p>
+                {providerFee > 0 ? (
+                  <small>
+                    Order {formatPrice(order.summary.total)} + fee payment {formatPrice(providerFee)}
+                  </small>
+                ) : null}
+              </div>
               <div className="qris-frame" aria-label="QRIS payment">
-                {qrImageUrl || staticQrisImage ? (
+                {qrImageUrl ? (
                   <img
-                    src={qrImageUrl || staticQrisImage}
+                    src={qrImageUrl}
                     alt="QRIS payment"
                     className="qris-image"
                   />
                 ) : (
                   <div className="qris-placeholder">
                     <span>QRIS</span>
-                    <small>QR belum dikonfigurasi</small>
+                    <small>QRIS belum tersedia</small>
                   </div>
                 )}
               </div>
               <p className="payment-note">
-                {isRefreshingOrder
-                  ? 'Memuat data payment terbaru...'
-                  : qrisPayload
-                  ? 'Nominal sudah tertanam di QRIS dinamis. Pembeli tinggal scan dan bayar.'
-                  : 'Scan QRIS statis, lalu pastikan nominal sama dengan total order.'}
+                Scan QRIS ini dari aplikasi e-wallet atau mobile banking. Status akan otomatis berubah setelah payment terkonfirmasi.
               </p>
               {qrError ? <p className="payment-error">{qrError}</p> : null}
-              <form className="payment-upload" onSubmit={handleUploadProof}>
-                <label className="proof-field">
-                  <span>Upload bukti payment</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,application/pdf"
-                    onChange={(event) => setProofFile(event.target.files?.[0] || null)}
-                  />
-                  <small>
-                    {proofFile
-                      ? proofFile.name
-                      : 'JPG, PNG, WEBP, atau PDF. Maksimal 8 MB.'}
-                  </small>
-                </label>
-                <Button type="submit" disabled={isUploading || !proofFile || !canPay}>
-                  {isUploading ? 'Mengupload...' : 'Upload bukti payment'}
+              <div className="payment-actions">
+                <Button
+                  as={Link}
+                  to={checkTransactionPath}
+                  variant="secondary"
+                  onClick={() => {
+                    if (order) {
+                      savePendingOrder(order)
+                    }
+                  }}
+                >
+                  Cek status
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => handleCancelOrder()}
-                  disabled={isCancelling || isUploading}
+                  disabled={isCancelling}
                 >
                   {isCancelling ? 'Membatalkan...' : 'Batalkan pesanan'}
                 </Button>
-              </form>
+              </div>
             </>
           )}
         </div>

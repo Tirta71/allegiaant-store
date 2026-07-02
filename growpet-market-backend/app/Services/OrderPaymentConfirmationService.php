@@ -16,9 +16,16 @@ class OrderPaymentConfirmationService
     {
     }
 
-    public function confirm(Order $order, ?Payment $payment = null, string $note = 'Order masuk antrean delivery pet.'): Order
+    public function confirm(
+        Order $order,
+        ?Payment $payment = null,
+        string $note = 'Order masuk antrean delivery pet.',
+        bool $skipExpiration = false
+    ): Order
     {
-        $order = $this->reservation->expireIfNeeded($order);
+        if (! $skipExpiration) {
+            $order = $this->reservation->expireIfNeeded($order);
+        }
 
         return DB::transaction(function () use ($order, $payment, $note) {
             $order = Order::query()
@@ -60,7 +67,7 @@ class OrderPaymentConfirmationService
 
             $payment = $payment
                 ? Payment::query()->lockForUpdate()->findOrFail($payment->id)
-                : $order->payments()->where('method', 'qris')->lockForUpdate()->first();
+                : $order->payments()->where('method', Payment::METHOD_PAKASIR)->lockForUpdate()->first();
 
             if ($payment && $payment->order_id !== $order->id) {
                 throw ValidationException::withMessages([
@@ -69,7 +76,7 @@ class OrderPaymentConfirmationService
             }
 
             $payment ??= $order->payments()->create([
-                'method' => 'qris',
+                'method' => Payment::METHOD_PAKASIR,
                 'amount' => $order->total,
                 'status' => Payment::STATUS_PENDING,
             ]);
@@ -83,6 +90,7 @@ class OrderPaymentConfirmationService
                 'status' => Order::STATUS_PAYMENT_CONFIRMED,
                 'status_note' => $note,
                 'paid_at' => now(),
+                'payment_expires_at' => null,
             ]);
 
             $order->statusHistories()->create([

@@ -7,16 +7,21 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Services\OrderReservationService;
+use App\Services\PakasirService;
 use App\Support\OrderPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
-    public function __construct(private readonly OrderReservationService $reservation)
+    public function __construct(
+        private readonly OrderReservationService $reservation,
+        private readonly PakasirService $pakasir
+    )
     {
     }
 
@@ -35,6 +40,8 @@ class OrderController extends Controller
             'items.*.nominal' => ['required_if:items.*.type,token', 'nullable', 'integer', 'min:1'],
         ]);
 
+        $this->pakasir->ensureConfigured();
+
         $order = DB::transaction(function () use ($data) {
             $reservedAt = now();
             $preparedItems = collect($data['items'])->map(fn (array $item) => $this->reservation->reserveItem($item));
@@ -50,24 +57,37 @@ class OrderController extends Controller
                 'total' => $subtotal,
                 'total_items' => $totalItems,
                 'status' => Order::STATUS_PENDING_PAYMENT,
-                'status_note' => 'Order dibuat. Stok dikunci selama 10 menit menunggu payment.',
+                'status_note' => 'Order dibuat. Stok dikunci selama 10 menit menunggu payment Pakasir.',
                 'payment_expires_at' => $reservedAt->copy()->addMinutes(10),
                 'stock_reserved_at' => $reservedAt,
             ]);
 
             $order->items()->createMany($preparedItems->all());
             $order->payments()->create([
-                'method' => 'qris',
+                'method' => Payment::METHOD_PAKASIR,
                 'amount' => $order->total,
                 'status' => Payment::STATUS_PENDING,
+                'provider_reference' => $order->code,
             ]);
             $order->statusHistories()->create([
                 'status' => Order::STATUS_PENDING_PAYMENT,
-                'note' => 'Order dibuat. Stok dikunci selama 10 menit menunggu payment.',
+                'note' => 'Order dibuat. Stok dikunci selama 10 menit menunggu payment Pakasir.',
             ]);
 
             return $order->load(['items', 'payments']);
         });
+
+        try {
+            $this->pakasir->prepareQrisPayment($order);
+            $order->load(['items', 'payments']);
+        } catch (ValidationException $exception) {
+            $this->reservation->cancel(
+                $order,
+                'QRIS Pakasir gagal dibuat. Pesanan otomatis dibatalkan dan stok dikembalikan.'
+            );
+
+            throw $exception;
+        }
 
         return response()->json([
             'data' => $this->orderPayload($order),
@@ -81,6 +101,7 @@ class OrderController extends Controller
             ->with(['items', 'payments', 'statusHistories'])
             ->firstOrFail();
 
+        $order = $this->pakasir->syncOrderPayment($order);
         $order = $this->reservation->expireIfNeeded($order);
 
         return response()->json([
@@ -91,6 +112,7 @@ class OrderController extends Controller
     public function statusHistory(string $code): JsonResponse
     {
         $order = Order::query()->byCode($code)->firstOrFail();
+        $order = $this->pakasir->syncOrderPayment($order);
         $order = $this->reservation->expireIfNeeded($order);
 
         return response()->json([

@@ -66,12 +66,13 @@ function TokenCard({ product }) {
     <article className="token-card">
       <ProductArt className="token-card__art" product={product} />
 
-      <span className="token-card__rate">
-        1K Token = {formatPrice(product.pricePerThousand)}
-      </span>
-
       <div className="token-card__info">
-        <h3>{product.name}</h3>
+        <div className="token-card__heading">
+          <h3>{product.name}</h3>
+          <span className="token-card__rate">
+            1K = {formatPrice(product.pricePerThousand)}
+          </span>
+        </div>
         <p>{formatPrice(product.pricePerThousand)}</p>
         <div className="token-card__meta">
           <span>

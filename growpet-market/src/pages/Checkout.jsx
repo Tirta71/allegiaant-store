@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import OrderSummary from '../components/cart/OrderSummary'
 import Button from '../components/ui/Button'
-import SectionHeader from '../components/ui/SectionHeader'
+import PageHeader from '../components/ui/PageHeader'
 import { useAlert } from '../context/useAlert'
 import { useCart } from '../context/useCart'
-import { cancelOrder, createOrder, fetchOrder } from '../services/api'
+import { createOrder, fetchOrder } from '../features/orders/orders.api'
 import {
   clearPendingOrder,
+  getCheckTransactionPath,
   getPendingOrder,
+  isOrderCheckoutBlocked,
   savePendingOrder,
+  shouldContinuePayment,
 } from '../utils/transactions'
 
 function createOrderPayload(form, items) {
@@ -40,9 +43,9 @@ function Checkout() {
   const navigate = useNavigate()
   const { items } = useCart()
   const { showAlert } = useAlert()
-  const [activePendingOrder, setActivePendingOrder] = useState(null)
-  const [isCheckingPending, setIsCheckingPending] = useState(true)
-  const [isCancellingPending, setIsCancellingPending] = useState(false)
+  const [isCheckingPending, setIsCheckingPending] = useState(() =>
+    Boolean(getPendingOrder()?.code),
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [form, setForm] = useState({
     robloxUsername: '',
@@ -59,7 +62,6 @@ function Checkout() {
     const pendingOrder = getPendingOrder()
 
     if (!pendingOrder?.code) {
-      setIsCheckingPending(false)
       return undefined
     }
 
@@ -71,9 +73,20 @@ function Checkout() {
           return
         }
 
-        if (freshOrder.rawStatus === 'pending_payment') {
-          setActivePendingOrder(freshOrder)
+        if (isOrderCheckoutBlocked(freshOrder)) {
           savePendingOrder(freshOrder)
+          const shouldPay = shouldContinuePayment(freshOrder)
+
+          showAlert({
+            tone: 'warning',
+            title: shouldPay ? 'Payment masih tertunda' : 'Pesanan belum selesai',
+            message: shouldPay
+              ? 'Selesaikan atau batalkan payment sebelumnya dulu.'
+              : 'Kamu bisa checkout lagi setelah order sebelumnya delivered.',
+          })
+          navigate(shouldPay ? '/payment' : getCheckTransactionPath(freshOrder), {
+            replace: true,
+          })
           return
         }
 
@@ -93,47 +106,10 @@ function Checkout() {
     return () => {
       isActive = false
     }
-  }, [])
-
-  async function handleCancelPendingOrder() {
-    if (!activePendingOrder) {
-      return
-    }
-
-    setIsCancellingPending(true)
-
-    try {
-      await cancelOrder(activePendingOrder.code, 'Pesanan dibatalkan buyer dari halaman checkout.')
-      clearPendingOrder()
-      setActivePendingOrder(null)
-      showAlert({
-        tone: 'success',
-        title: 'Pesanan dibatalkan',
-        message: 'Stok sudah dikembalikan. Kamu bisa checkout lagi.',
-      })
-    } catch (requestError) {
-      showAlert({
-        tone: 'error',
-        title: 'Gagal membatalkan',
-        message: requestError.message,
-      })
-    } finally {
-      setIsCancellingPending(false)
-    }
-  }
+  }, [navigate, showAlert])
 
   async function handleSubmit(event) {
     event.preventDefault()
-
-    if (activePendingOrder) {
-      showAlert({
-        tone: 'warning',
-        title: 'Masih ada pesanan pending',
-        message: 'Selesaikan atau batalkan pesanan sebelumnya dulu.',
-      })
-      navigate('/payment')
-      return
-    }
 
     if (items.some((item) => item.type === 'pet' && !item.productVariantId)) {
       showAlert({
@@ -181,7 +157,7 @@ function Checkout() {
 
   return (
     <div className="container page-flow">
-      <SectionHeader
+      <PageHeader
         eyebrow="Checkout"
         title="Lengkapi data order"
         description="Order akan dibuat langsung ke backend agar masuk dashboard admin."
@@ -191,28 +167,6 @@ function Checkout() {
         <section className="empty-state">
           <h1>Mengecek pesanan pending</h1>
           <p>Sebentar, sistem memastikan tidak ada payment yang masih berjalan.</p>
-        </section>
-      ) : activePendingOrder ? (
-        <section className="empty-state">
-          <h1>Masih ada pesanan pending</h1>
-          <p>
-            Kode {activePendingOrder.code} masih menunggu payment. Selesaikan atau
-            batalkan dulu sebelum checkout lagi.
-          </p>
-          <div className="payment-actions">
-            <Button as={Link} to="/payment">
-              Lanjut payment
-            </Button>
-            {activePendingOrder.canCancel && (
-              <Button
-                variant="secondary"
-                onClick={handleCancelPendingOrder}
-                disabled={isCancellingPending}
-              >
-                {isCancellingPending ? 'Membatalkan...' : 'Batalkan pesanan'}
-              </Button>
-            )}
-          </div>
         </section>
       ) : items.length === 0 ? (
         <section className="empty-state">

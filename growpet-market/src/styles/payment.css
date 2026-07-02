@@ -66,6 +66,68 @@
   color: #9f473e;
 }
 
+.payment-status-note {
+  display: grid;
+  gap: 6px;
+  padding: 13px 14px;
+  border: 1px solid rgba(151, 93, 35, 0.2);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 248, 222, 0.9), rgba(255, 255, 255, 0.84)),
+    #fffaf0;
+}
+
+.payment-status-note span {
+  color: #875314;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.payment-status-note p {
+  margin: 0;
+  color: #5f421d;
+  line-height: 1.5;
+}
+
+.pakasir-panel {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(49, 95, 61, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(237, 247, 216, 0.66)),
+    #fff;
+}
+
+.pakasir-panel span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pakasir-panel strong {
+  color: var(--leaf);
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.pakasir-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.pakasir-panel small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .qris-frame {
   display: grid;
   place-items: center;
@@ -192,6 +254,11 @@
   .payment-timer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .payment-status-note,
+  .pakasir-panel {
+    display: none;
   }
 
   .transaction-code-row,

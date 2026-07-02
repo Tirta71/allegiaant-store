@@ -35,6 +35,12 @@ class PaymentProofController extends Controller
             ]);
         }
 
+        if ($order->payments()->where('method', Payment::METHOD_PAKASIR)->exists()) {
+            throw ValidationException::withMessages([
+                'payment' => 'Payment Pakasir tidak memakai upload bukti manual. Silakan bayar melalui link Pakasir.',
+            ]);
+        }
+
         $order = DB::transaction(function () use ($code, $data) {
             $order = Order::query()
                 ->byCode($code)
@@ -57,6 +63,7 @@ class PaymentProofController extends Controller
                 'amount' => $order->total,
                 'status' => Payment::STATUS_PENDING,
                 'proof_url' => $proofUrl,
+                'proof_uploaded_at' => $payment->proof_uploaded_at ?: now(),
             ]);
 
             $note = 'Bukti payment sudah diupload. Menunggu konfirmasi admin.';

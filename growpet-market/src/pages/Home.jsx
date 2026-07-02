@@ -6,7 +6,7 @@ import TokenCard from '../components/token/TokenCard'
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
 
-import { fetchProducts } from '../services/api'
+import { fetchProducts } from '../features/products/products.api'
 
 function sortPets(items, sortBy) {
   const sortedItems = [...items]

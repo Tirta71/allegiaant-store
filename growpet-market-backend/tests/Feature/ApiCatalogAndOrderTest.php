@@ -9,8 +9,6 @@ use App\Models\TokenRate;
 use App\Services\OrderPaymentConfirmationService;
 use Database\Seeders\ProductCatalogSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ApiCatalogAndOrderTest extends TestCase
@@ -92,12 +90,8 @@ class ApiCatalogAndOrderTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_frontend_can_create_order_and_upload_payment_proof(): void
+    public function test_frontend_can_create_order_and_receive_pakasir_webhook(): void
     {
-        config([
-            'payment.qris.static_payload' => '00020101021126610014COM.GO-JEK.WWW01189360091437108869220210G7108869220303UMI51440014ID.CO.QRIS.WWW0215ID10254531401270303UMI5204599553033605802ID5919Allegiaant Pet Shop6005BOGOR61051661062070703A0163040DAF',
-        ]);
-
         $this->seed(ProductCatalogSeeder::class);
 
         $variant = $this->sampleVariant();
@@ -121,13 +115,16 @@ class ApiCatalogAndOrderTest extends TestCase
         $orderResponse
             ->assertCreated()
             ->assertJsonPath('data.status', 'pending_payment')
-            ->assertJsonPath('data.payment_instructions.method', 'qris')
-            ->assertJsonPath('data.payment_instructions.amount', 100000)
+            ->assertJsonPath('data.payment_instructions.method', 'pakasir')
+            ->assertJsonPath('data.payment_instructions.order_amount', 100000)
+            ->assertJsonPath('data.payment_instructions.fee', 1003)
+            ->assertJsonPath('data.payment_instructions.total_payment', 101003)
+            ->assertJsonPath('data.payment_instructions.amount', 101003)
             ->assertJsonPath('data.can_cancel', true)
             ->assertJsonCount(1, 'data.items');
 
-        $this->assertStringContainsString(
-            '5406100000',
+        $this->assertStringStartsWith(
+            '000201',
             $orderResponse->json('data.payment_instructions.qris_payload')
         );
 
@@ -144,23 +141,25 @@ class ApiCatalogAndOrderTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.code', $code);
 
-        Storage::fake('public');
+        config(['testing.pakasir_status' => 'completed']);
 
-        $this->post("/api/orders/{$code}/payment-proof", [
-            'proof' => UploadedFile::fake()->image('proof.jpg'),
+        $this->postJson('/api/pakasir/webhook', [
+            'amount' => 100000,
+            'order_id' => $code,
+            'project' => 'test-project',
+            'status' => 'completed',
+            'payment_method' => 'qris',
+            'completed_at' => now()->toISOString(),
         ])
             ->assertOk()
-            ->assertJsonPath('data.status', 'pending_payment')
-            ->assertJsonPath('data.payments.0.status', 'pending')
-            ->assertJsonPath('data.status_note', 'Bukti payment sudah diupload. Menunggu konfirmasi admin.')
-            ->assertJsonPath('data.payments.0.confirmed_at', null);
+            ->assertJsonPath('data.status', 'payment_confirmed');
 
         $variant->refresh();
         $product->refresh();
 
         $this->assertSame(4, $variant->stock);
-        $this->assertSame(0, $variant->sales_count);
-        $this->assertSame(0, $product->sales_count);
+        $this->assertSame(1, $variant->sales_count);
+        $this->assertSame(1, $product->sales_count);
 
         $this->getJson("/api/orders/{$code}/status-history")
             ->assertOk()
@@ -292,6 +291,45 @@ class ApiCatalogAndOrderTest extends TestCase
         ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('items');
+    }
+
+    public function test_testimonials_return_delivered_orders_with_trade_proof(): void
+    {
+        $this->seed(ProductCatalogSeeder::class);
+
+        $variant = $this->sampleVariant();
+
+        $orderResponse = $this->postJson('/api/orders', [
+            'buyer' => [
+                'roblox_username' => 'ProofBuyer01',
+                'whatsapp' => '08123456789',
+            ],
+            'items' => [
+                [
+                    'type' => 'pet',
+                    'product_variant_id' => $variant->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ])->assertCreated();
+
+        $order = Order::query()
+            ->byCode($orderResponse->json('data.code'))
+            ->firstOrFail();
+
+        $order->update([
+            'status' => Order::STATUS_DELIVERED,
+            'delivery_proof_url' => '/storage/delivery-proofs/proof-buyer-01.png',
+            'delivery_proof_uploaded_at' => now(),
+        ]);
+
+        $this->getJson('/api/testimonials')
+            ->assertOk()
+            ->assertJsonFragment(['roblox_username' => 'ProofBuyer01'])
+            ->assertJsonFragment(['url' => '/storage/delivery-proofs/proof-buyer-01.png'])
+            ->assertJsonFragment(['type' => 'pet'])
+            ->assertJsonFragment(['name' => $variant->product->name])
+            ->assertJsonFragment(['quantity' => 1]);
     }
 
     private function sampleVariant(): ProductVariant

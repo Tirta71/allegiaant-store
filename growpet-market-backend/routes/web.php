@@ -14,6 +14,9 @@ Route::get('/', function () {
     return redirect()->route('admin.dashboard');
 });
 
+Route::get('stream/order-overlay', [OrderController::class, 'publicStreamOverlay'])->name('stream.order-overlay');
+Route::get('stream/order-overlay/feed', [OrderController::class, 'publicStreamOverlayFeed'])->name('stream.order-overlay.feed');
+
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('guest')->group(function () {
         Route::get('/login', [AuthController::class, 'create'])->name('login');
@@ -33,9 +36,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('token-rates', TokenRateController::class)->only(['index', 'store', 'update', 'destroy']);
 
         Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('orders/stream-overlay', [OrderController::class, 'streamOverlay'])->name('orders.stream-overlay');
+        Route::get('orders/stream-overlay/feed', [OrderController::class, 'streamOverlayFeed'])->name('orders.stream-overlay.feed');
         Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
         Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.update-status');
         Route::post('orders/{order}/delivery-proof', [OrderController::class, 'uploadDeliveryProof'])->name('orders.delivery-proof');
         Route::patch('payments/{payment}/confirm', [PaymentController::class, 'confirm'])->name('payments.confirm');
+        Route::patch('payments/{payment}/reset-proof', [PaymentController::class, 'resetProof'])->name('payments.reset-proof');
     });
 });

@@ -1,10 +1,17 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
 import { useAlert } from '../context/useAlert'
 import { formatPrice, formatWeight } from '../data/pets'
-import { fetchOrder } from '../services/api'
+import { fetchOrder } from '../features/orders/orders.api'
+import {
+  clearPendingOrder,
+  getPendingOrder,
+  isOrderCheckoutBlocked,
+  savePendingOrder,
+  shouldContinuePayment,
+} from '../utils/transactions'
 
 const SELLER_WHATSAPP_DISPLAY = '0812-8496-4533'
 const SELLER_WHATSAPP_URL = 'https://wa.me/6281284964533'
@@ -16,6 +23,8 @@ const PRIVATE_SERVER_VISIBLE_STATUSES = new Set([
   'processing',
   'delivered',
 ])
+const REVIEW_POLL_INTERVAL_MS = 12000
+const DELIVERY_POLL_INTERVAL_MS = 15000
 
 function formatDate(value) {
   if (!value) {
@@ -38,51 +47,129 @@ function getSellerWhatsappUrl(transactionCode) {
 
 function CheckTransaction() {
   const { showAlert } = useAlert()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [code, setCode] = useState('')
   const [transaction, setTransaction] = useState(null)
   const [hasSearched, setHasSearched] = useState(false)
   const [copied, setCopied] = useState(false)
   const [checkedCode, setCheckedCode] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const autoCheckedCode = useRef('')
   const sellerWhatsappUrl = getSellerWhatsappUrl(transaction?.code || checkedCode)
   const canOpenPrivateServer = transaction
     ? PRIVATE_SERVER_VISIBLE_STATUSES.has(transaction.rawStatus)
     : false
 
-  async function handleSubmit(event) {
-    event.preventDefault()
-    const nextCheckedCode = code.trim().toUpperCase()
+  const checkOrder = useCallback(async (nextCode, options = {}) => {
+    const { silent = false } = options
+    const nextCheckedCode = nextCode.trim().toUpperCase()
 
-    setIsSearching(true)
+    if (!nextCheckedCode) {
+      return
+    }
+
+    if (!silent) {
+      setIsSearching(true)
+    }
 
     try {
       const foundTransaction = await fetchOrder(nextCheckedCode)
+
+      if (shouldContinuePayment(foundTransaction)) {
+        const needsProofReupload = String(foundTransaction.statusNote || '')
+          .toLowerCase()
+          .includes('belum valid')
+
+        savePendingOrder(foundTransaction)
+        if (!silent) {
+          showAlert({
+            tone: 'warning',
+            title: needsProofReupload ? 'Bukti perlu upload ulang' : 'Payment masih tertunda',
+            message: needsProofReupload
+              ? foundTransaction.statusNote
+              : 'Selesaikan atau batalkan payment dulu sebelum cek transaksi.',
+          })
+        }
+        navigate('/payment', { replace: true })
+        return
+      }
 
       setTransaction(foundTransaction)
       setHasSearched(true)
       setCopied(false)
       setCheckedCode(nextCheckedCode)
-      showAlert({
-        tone: 'success',
-        title: 'Transaksi ditemukan',
-        message: `${foundTransaction.code} sedang diproses.`,
-      })
+      if (isOrderCheckoutBlocked(foundTransaction)) {
+        savePendingOrder(foundTransaction)
+      } else {
+        clearPendingOrder()
+      }
+      if (!silent) {
+        showAlert({
+          tone: 'success',
+          title: 'Transaksi ditemukan',
+          message: `${foundTransaction.code} sedang diproses.`,
+        })
+      }
     } catch (requestError) {
-      setTransaction(null)
-      setHasSearched(true)
-      setCopied(false)
-      setCheckedCode(nextCheckedCode)
-      showAlert({
-        tone: 'warning',
-        title: 'Kode tidak ditemukan',
-        message:
-          requestError.status === 404
-            ? 'Cek lagi kode transaksi dari backend.'
-            : requestError.message,
-      })
+      if (!silent) {
+        setTransaction(null)
+        setHasSearched(true)
+        setCopied(false)
+        setCheckedCode(nextCheckedCode)
+        showAlert({
+          tone: 'warning',
+          title: 'Kode tidak ditemukan',
+          message:
+            requestError.status === 404
+              ? 'Cek lagi kode transaksi dari backend.'
+              : requestError.message,
+        })
+      }
     } finally {
-      setIsSearching(false)
+      if (!silent) {
+        setIsSearching(false)
+      }
     }
+  }, [navigate, showAlert])
+
+  useEffect(() => {
+    const urlCode = searchParams.get('code')?.trim().toUpperCase() || ''
+    const pendingCode = getPendingOrder()?.code?.trim().toUpperCase() || ''
+    const autoCode = urlCode || pendingCode
+
+    if (!autoCode || autoCheckedCode.current === autoCode) {
+      return
+    }
+
+    autoCheckedCode.current = autoCode
+    setCode(autoCode)
+    checkOrder(autoCode)
+  }, [checkOrder, searchParams])
+
+  useEffect(() => {
+    if (
+      !transaction?.code ||
+      !isOrderCheckoutBlocked(transaction) ||
+      shouldContinuePayment(transaction)
+    ) {
+      return undefined
+    }
+
+    const intervalMs =
+      transaction.rawStatus === 'pending_payment'
+        ? REVIEW_POLL_INTERVAL_MS
+        : DELIVERY_POLL_INTERVAL_MS
+    const timer = window.setInterval(() => {
+      checkOrder(transaction.code, { silent: true })
+    }, intervalMs)
+
+    return () => window.clearInterval(timer)
+  }, [checkOrder, transaction])
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    await checkOrder(code)
   }
 
   async function handleCopyCode() {
@@ -182,6 +269,33 @@ function CheckTransaction() {
           </section>
         )}
 
+        {hasSearched && transaction && (
+          <section className="private-server-card" aria-label="Private server">
+            <div>
+              <span>Private server</span>
+              {canOpenPrivateServer ? (
+                <>
+                  <strong>{PRIVATE_SERVER_NAME}</strong>
+                  <p>Pembayaran sudah diverifikasi admin. Silakan masuk melalui link private server.</p>
+                </>
+              ) : (
+                <p>Private server akan tersedia setelah pembayaran dikonfirmasi oleh admin.</p>
+              )}
+            </div>
+            {canOpenPrivateServer && (
+              <Button
+                as="a"
+                href={PRIVATE_SERVER_URL}
+                target="_blank"
+                rel="noreferrer"
+                variant="secondary"
+              >
+                Buka server
+              </Button>
+            )}
+          </section>
+        )}
+
         {transaction && (
           <article className="transaction-result">
             <div className="transaction-result__header">
@@ -192,12 +306,14 @@ function CheckTransaction() {
                   {copied ? 'Copied' : 'Copy'}
                 </Button>
               </div>
-              
-              <div>
-                <span>Status</span>
-                <strong>{transaction.status}</strong>
-              </div>
             </div>
+
+            {transaction.statusNote && (
+              <div className="status-note" data-status={transaction.rawStatus}>
+                <span>Catatan status</span>
+                <p>{transaction.statusNote}</p>
+              </div>
+            )}
 
             <div className="transaction-meta">
               <span>Dibayar</span>
@@ -205,40 +321,6 @@ function CheckTransaction() {
               <span>Username Roblox</span>
               <strong>{transaction.buyer.robloxUsername}</strong>
             </div>
-
-                <div className="private-server-card">
-                  <div>
-                    <span>Private server</span>
-                    {canOpenPrivateServer ? (
-                      <>
-                        <strong>{PRIVATE_SERVER_NAME}</strong>
-                        <p>Pembayaran sudah diverifikasi admin. Silakan masuk melalui link private server.</p>
-                      </>
-                    ) : (
-                    <p>Private server akan tersedia setelah pembayaran dikonfirmasi oleh admin.</p>
-                    )}
-                  </div>
-                  {canOpenPrivateServer && (
-                    <Button
-                      as="a"
-                      href={PRIVATE_SERVER_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      variant="secondary"
-                      size="sm"
-                    >
-                      Buka server
-                    </Button>
-                  )}
-                </div>
-              {transaction.statusNote && (
-                <div className="status-note" data-status={transaction.rawStatus}>
-                  <span>Catatan status</span>
-                  <p>{transaction.statusNote}</p>
-              </div>
-            )}
-
-          
 
             {transaction.deliveryProof?.url && (
               <div className="transaction-proof">

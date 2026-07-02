@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import PendingPaymentGate from '../components/layout/PendingPaymentGate'
 import BuyGuide from '../pages/BuyGuide'
 import Cart from '../pages/Cart'
 import CheckTransaction from '../pages/CheckTransaction'
@@ -10,19 +11,21 @@ import TestimonialsPage from '../pages/TestimonialsPage'
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/cara-beli" element={<BuyGuide />} />
-      <Route path="/testimoni" element={<TestimonialsPage />} />
-      <Route path="/catalog" element={<Navigate to="/" replace />} />
-      <Route path="/pet/:id" element={<PetDetail />} />
-      <Route path="/token" element={<Navigate to="/" replace />} />
-      <Route path="/cart" element={<Cart />} />
-      <Route path="/checkout" element={<Checkout />} />
-      <Route path="/payment" element={<Payment />} />
-      <Route path="/cek-transaksi" element={<CheckTransaction />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <PendingPaymentGate>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/cara-beli" element={<BuyGuide />} />
+        <Route path="/testimoni" element={<TestimonialsPage />} />
+        <Route path="/catalog" element={<Navigate to="/" replace />} />
+        <Route path="/pet/:id" element={<PetDetail />} />
+        <Route path="/token" element={<Navigate to="/" replace />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/payment" element={<Payment />} />
+        <Route path="/cek-transaksi" element={<CheckTransaction />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </PendingPaymentGate>
   )
 }
 

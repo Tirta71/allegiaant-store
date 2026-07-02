@@ -1,16 +1,15 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAlert } from '../context/useAlert'
-import { fetchOrder } from '../services/api'
+import { fetchOrder } from '../features/orders/orders.api'
 import {
   clearPendingOrder,
+  getCheckTransactionPath,
   getPendingOrder,
+  isOrderCheckoutBlocked,
   savePendingOrder,
+  shouldContinuePayment,
 } from '../utils/transactions'
-
-function isActivePendingPayment(order) {
-  return order?.rawStatus === 'pending_payment'
-}
 
 export function usePendingPaymentGuard() {
   const navigate = useNavigate()
@@ -26,14 +25,18 @@ export function usePendingPaymentGuard() {
     try {
       const freshOrder = await fetchOrder(pendingOrder.code)
 
-      if (isActivePendingPayment(freshOrder)) {
+      if (isOrderCheckoutBlocked(freshOrder)) {
         savePendingOrder(freshOrder)
+        const shouldPay = shouldContinuePayment(freshOrder)
+
         showAlert({
           tone: 'warning',
-          title: 'Payment masih tertunda',
-          message: 'Selesaikan atau batalkan pesanan sebelumnya dulu.',
+          title: shouldPay ? 'Payment masih tertunda' : 'Pesanan belum selesai',
+          message: shouldPay
+            ? 'Selesaikan atau batalkan payment sebelumnya dulu.'
+            : 'Kamu bisa checkout lagi setelah order sebelumnya delivered.',
         })
-        navigate('/payment')
+        navigate(shouldPay ? '/payment' : getCheckTransactionPath(freshOrder))
 
         return true
       }
